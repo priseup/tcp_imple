@@ -1,10 +1,14 @@
 #ifndef TEST_TEST_H
 #define TEST_TEST_H
 
+#include <stdbool.h>
+
 struct mbuf;
 struct ifnet;
 struct ifaddr;
 struct sockaddr_dl;
+
+bool mbuf_equal(struct mbuf *m1, struct mbuf *m2);
 
 // chapter2
 void  print_mbuf(struct mbuf *m, int offset, int len);

@@ -5,6 +5,30 @@
 #include <string.h>
 #include <stdio.h>
 
+bool mbuf_equal(struct mbuf *m1, struct mbuf *m2)
+{
+    if (m1->m_flags != m2->m_flags)
+        return false;
+
+    while (m1 && m2)
+    {
+        if (m1->m_len != m2->m_len)
+            return false;
+
+        if (memcmp(mtod(m1, caddr_t), mtod(m2, caddr_t), m1->m_len) != 0)
+            return false;
+
+        m1 = m1->m_len;
+        m2 = m2->m_len;
+    }
+
+    if (m1 || m2)
+        return false;
+
+    return true;
+}
+
+
 void print_mbuf(struct mbuf *m, int offset, int len)
 {
     while (m->m_len < offset)
