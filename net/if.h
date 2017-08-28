@@ -1,6 +1,7 @@
 #ifndef NET_IF_H
 #define NET_IF_H
 
+#include "route.h"
 #include "..\sys\time.h"
 #include "..\sys\socket.h"
 #include "..\netinet\in.h"
@@ -23,6 +24,9 @@
 #define	IFF_LINK1	0x2000		/* per link layer defined bit */
 #define	IFF_LINK2	0x4000		/* per link layer defined bit */
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
+
+#define	IFA_ROUTE	RTF_UP		/* route installed */
+
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \

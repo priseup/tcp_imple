@@ -1,6 +1,8 @@
 #ifndef NETINET_IN_VAR_H
 #define NETINET_IN_VAR_H
 
+#include "../net/if.h"
+
 /*
  * Interface address, Internet version.  One of these structures
  * is allocated for each interface with an Internet address.
@@ -26,6 +28,7 @@ struct in_ifaddr {
 };
 
 struct	in_aliasreq {
+#define IFNAMSIZ 16
 	char	ifra_name[IFNAMSIZ];		/* if name, e.g. "en0" */
 	struct	sockaddr_in ifra_addr;
 	struct	sockaddr_in ifra_broadaddr;
