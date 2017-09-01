@@ -18,8 +18,8 @@ bool mbuf_equal(struct mbuf *m1, struct mbuf *m2)
         if (memcmp(mtod(m1, caddr_t), mtod(m2, caddr_t), m1->m_len) != 0)
             return false;
 
-        m1 = m1->m_len;
-        m2 = m2->m_len;
+        m1 = m1->m_next;
+        m2 = m2->m_next;
     }
 
     if (m1 || m2)

@@ -10,6 +10,7 @@
 #include "..\sys\errno.h"
 #include "..\sys\time.h"
 #include <stddef.h>
+#include <string.h>
 
 #define NSL 32
 /*
@@ -88,6 +89,10 @@ struct sl_softc sl_softc[NSL];
 #define TRANS_FRAME_ESCAPE 	0xdd		/* transposed frame esc */
 
 extern int ifqmaxlen;
+
+static int slinit(struct sl_softc *sc);
+static struct mbuf *sl_btom(struct sl_softc *sc, int len);
+
 void slattach()
 {
     int i = 0;
@@ -184,7 +189,7 @@ void slinput(int c, struct tty *tp)
     struct ifnet *ifp = NULL;
     struct mbuf *m = NULL;
     struct ifqueue *ifq = NULL;
-    int len, s;
+    int len;
     u_char chdr[CHDR_LEN];
 
     tk_nin++;

@@ -186,7 +186,7 @@ struct ifaddr
     struct ifnet *ifa_ifp;
     struct sockaddr *ifa_addr;
     struct sockaddr *ifa_dstaddr;
-#define ifa_broadaddr ifa_dstadrr
+#define ifa_broadaddr ifa_dstaddr
     struct sockaddr *ifa_netmask;
     void(*ifa_rtrequest)();
     u_short ifa_flags;

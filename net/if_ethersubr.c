@@ -33,13 +33,13 @@ ether_output(ifp, m0, dst, rt0)
 	struct rtentry *rt0;
 {
     short type;
-    int s, error = 0;
+    int error = 0;
     u_char edst[6];
     struct mbuf *m = m0;
     struct rtentry *rt;
     struct mbuf *mcopy = (struct mbuf *)0;
     struct ether_header *eh;
-    int off, len = m->m_pkthdr.len;
+    int len = m->m_pkthdr.len;
     struct arpcom *ac = (struct arpcom *)ifp;
 
     if (!(ifp->if_flags & IFF_UP))
@@ -64,7 +64,7 @@ ether_output(ifp, m0, dst, rt0)
         {
             if (rt->rt_gwroute == 0)
                 goto lookup;
-            if ((rt = rt->rt_gwroute)->rt_flags & RTF_UP == 0)
+            if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0)
             {
                 rtfree(rt);
                 rt = rt0;
@@ -86,7 +86,7 @@ lookup:
         if (!arpresolve(ac, rt, m, dst, edst))
             return 0;
         if ((ifp->if_flags & IFF_SIMPLEX) && (m0->m_flags & IFF_BROADCAST))
-            mcopy = m_copy(m0, 0, len, M_WAITOK);
+            mcopy = m_copy(m0, 0, len);
 
         type = ETHERTYPE_IP;
 
@@ -118,14 +118,14 @@ lookup:
     memcpy(eh->ether_dhost, edst, sizeof (edst));
     memcpy(eh->ether_shost, ac->ac_enaddr, sizeof (ac->ac_enaddr));
 
-    if (IF_QFULL(&ifp->if_snd, m))
+    if (IF_QFULL(&ifp->if_snd))
     {
         IF_DROP(&ifp->if_snd);
         senderr(ENOBUFS);
     }
     IF_ENQUEUE(&ifp->if_snd, m0);
 
-    if (ifp->if_flags & IFF_OACTIVE == 0)
+    if ((ifp->if_flags & IFF_OACTIVE) == 0)
         (ifp->if_start)(ifp);
 
     ifp->if_obytes = len + sizeof(struct ether_header);
@@ -154,7 +154,7 @@ ether_input(ifp, eh, m)
     extern struct ifqueue ipintrq;
     struct arpcom *ac = (struct arpcom*)ifp;
 
-    if (ifp->if_flags & IFF_UP == 0)
+    if ((ifp->if_flags & IFF_UP) == 0)
     {
         m_freem(m);
         return ;

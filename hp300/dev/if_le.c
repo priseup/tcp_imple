@@ -132,7 +132,7 @@ void leread(int unit, char *buf, int len)
     if (eh->ether_dhost[0] & 0x1)
         mbuf->m_flags |= M_MCAST;
 
-    struct mbuf *m = m_devget(mbuf, mbuf->m_pkthdr.len, 0, (struct ifnet*)le, NULL);
+    struct mbuf *m = m_devget(mtod(mbuf, caddr_t), mbuf->m_pkthdr.len, 0, (struct ifnet*)le, NULL);
     if (m == NULL)
     {
         return;
@@ -149,7 +149,7 @@ int lestart(struct ifnet *ifp)
 
     if (!ifp)
         return 0;
-    if (ifp->if_flags & IFF_RUNNING == 0)
+    if ((ifp->if_flags & IFF_RUNNING) == 0)
         return 0;
 
     le = &le_softc[ifp->if_unit];
@@ -181,11 +181,11 @@ int leioctl(struct ifnet *ifp, int cmd, caddr_t data)
     switch (cmd)
     {
     case SIOCSIFFLAGS:
-        if ((ifa->ifa_flags & IFF_UP == 0)
+        if (((ifa->ifa_flags & IFF_UP) == 0)
             && (ifp->if_flags & IFF_RUNNING))
             ifp->if_flags &= ~IFF_RUNNING;
         else if ((ifa->ifa_flags & IFF_UP)
-            && (ifp->if_flags & IFF_RUNNING == 0))
+            && ((ifp->if_flags & IFF_RUNNING) == 0))
             leinit(ifp->if_unit);
 
         if (((ifp->if_flags ^ le->sc_iflags) & IFF_PROMISC)

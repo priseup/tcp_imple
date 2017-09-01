@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #define	MSIZE		128		/* size of an mbuf */
-#define	MCLBYTES	1024
 
 #define	MLEN		(MSIZE - sizeof(struct m_hdr))	/* normal data len */
 #define	MHLEN		(MLEN - sizeof(struct pkthdr))	/* data len w/pkthdr */
