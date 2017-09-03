@@ -7,7 +7,6 @@
 #include "..\netinet\in.h"
 #include "../sys/mbuf.h"
 
-
 #define	IFF_UP		0x1		/* interface is up */
 #define	IFF_BROADCAST	0x2		/* broadcast address valid */
 #define	IFF_DEBUG	0x4		/* turn on debugging */
@@ -26,7 +25,6 @@
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
 
 #define	IFA_ROUTE	RTF_UP		/* route installed */
-
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
@@ -213,26 +211,42 @@ struct ifaddr
 
 #define IF_ENQUEUE(ifq, m)  \
 {   \
-	m->m_nextpkt = (ifq)->ifq_tail->m_nextpkt; \
-	(ifq)->ifq_tail->m_nextpkt = m; \
+    if ((ifq)->ifq_len == 0)    \
+    {   \
+        (m)->m_nextpkt = NULL;  \
+        (ifq)->ifq_head = (m);  \
+    }   \
+    else    \
+    {   \
+        (m)->m_nextpkt = (ifq)->ifq_tail->m_nextpkt; \
+        (ifq)->ifq_tail->m_nextpkt = (m); \
+    }   \
+    (ifq)->ifq_tail = (m);  \
 	(ifq)->ifq_len++;   \
 }
 
 #define IF_PREPEND(ifq, m)  \
 {   \
-	m->m_nextpkt = (ifq)->ifq_head; \
-	(ifq)->ifq_head = m;    \
-	(ifq)->ifq_len++;   \
+    if ((ifq)->ifq_head == NULL)    \
+    {   \
+        IF_ENQUEUE(ifq, m)    \
+    }   \
+    else    \
+    {   \
+        (m)->m_nextpkt = (ifq)->ifq_head; \
+        (ifq)->ifq_head = m;    \
+        (ifq)->ifq_len++;   \
+    }   \
 }
 
 #define IF_DEQUEUE(ifq, m)  \
 {   \
-	m = NULL;   \
+	(m) = NULL;   \
 	if((ifq)->ifq_len > 0) \
     { \
-    m = (ifq)->ifq_head;    \
-	(ifq)->ifq_head = (ifq)->ifq_head->m_nextpkt;   \
-	(ifq)->ifq_len--;   \
+        (m) = (ifq)->ifq_head;    \
+        (ifq)->ifq_head = (ifq)->ifq_head->m_nextpkt;   \
+        (ifq)->ifq_len--;   \
     } \
 }
 

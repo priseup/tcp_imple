@@ -5,7 +5,6 @@
 struct	mbuf *mbutl;
 char	*mclrefcnt;
 
-
 int mbtypes[] = {				/* XXX */
 	M_FREE,		/* MT_FREE	0	   should be on free list */
 	M_MBUF,		/* MT_DATA	1	   dynamic (data) allocation */
@@ -134,11 +133,6 @@ void m_cat(struct mbuf *m, struct mbuf *n)
         //int mlen = m_total_len(m);
         //int nlen = m_total_len(n);
     //}
-}
-
-struct mbuf *m_copy(struct mbuf *m, int offset, int len)
-{
-    return NULL;
 }
 
 static inline int get_total_len(struct mbuf *m)
@@ -316,8 +310,9 @@ struct mbuf *m_devget(char *buf, int len, int off, struct ifnet *ifp,
     char *p = buf + off;
 
     MGETHDR(m, nowait, M_PKTHDR);
+
     struct mbuf *old = m;
-    bool has_cluster = len >= 209;
+    bool has_cluster = len >= MINCLSIZE;
 
     while (len > 0)
     {
@@ -327,21 +322,27 @@ struct mbuf *m_devget(char *buf, int len, int off, struct ifnet *ifp,
             if (!has_cluster)
             {
                 m = m_get(nowait, 0);
-                m->m_len = MLEN;
             }
             else if (has_cluster)
             {
                 m = m_getclr(nowait, 0);
-                m->m_len = MCLBYTES;
             }
 
-            memset(mtod(m, caddr_t), 0, m->m_len * sizeof(char));
             m_cat(old, m);
         }
-
-        int copy_len = min(len, m->m_len);
+       
+        int copy_len = 0;
+        if (m->m_flags & M_EXT)
+            copy_len = min(len, MCLBYTES - m->m_len);
+        else if (m->m_flags & M_PKTHDR)
+            copy_len = min(len, MHLEN - m->m_len);
+        else
+            copy_len = min(len, MLEN - m->m_len);
         memcpy(mtod(m, caddr_t), p, copy_len * sizeof (char));
+
         m->m_len = copy_len;
+        old->m_pkthdr.len += m->m_len;
+
         len -= copy_len;
         p += copy_len;
         m = m->m_next;
@@ -370,20 +371,25 @@ struct mbuf *m_free(struct mbuf *m)
         }
 
     }
-    n->m_nextpkt = m->m_nextpkt;
-    n->m_type = m->m_type;
-    n->m_flags |= M_PKTHDR;
+    n = m->m_next;
+    if (n == NULL)
+        goto end;
 
-    n->m_pkthdr.len = m->m_pkthdr.len - m->m_len;
+    n->m_type = m->m_type;
+    n->m_flags |= m->m_flags;
+
+    if (m->m_flags & M_PKTHDR)
+        n->m_pkthdr.len = m->m_pkthdr.len - m->m_len;
     n->m_pkthdr.rcvif = m->m_pkthdr.rcvif;
 
+end:
     free(m);
     return n;
 }
 
 void m_freem(struct mbuf *m)
 {
-    struct mbuf *n;
+    struct mbuf *n = NULL;
 
     while (m)
     {
@@ -415,6 +421,7 @@ struct mbuf *m_getclr(int nowait, int type)
     struct mbuf *m = NULL;
 
     MGET(m, nowait, type);
+    m->m_flags = M_EXT;
 	mtod(m, caddr_t) = (caddr_t)malloc(sizeof(char) * MCLBYTES);
     memset(mtod(m, caddr_t), 0, sizeof (char) * MCLBYTES);
 
@@ -481,3 +488,33 @@ struct mbuf *m_retry(int i, int t)
 	return m;
 }
 
+/*
+* Lesser-used path for M_PREPEND:
+* allocate new mbuf to prepend to chain,
+* copy junk along.
+*/
+struct	mbuf *m_prepend(struct mbuf *m, int len, int how)
+{
+    struct mbuf *mn;
+
+    MGET(mn, how, m->m_type);
+    if (mn == NULL)
+    {
+        m_freem(m);
+        return NULL;
+    }
+    if (m->m_flags & M_PKTHDR)
+    {
+        M_COPY_PKTHDR(mn, m);
+        m->m_flags &= ~M_PKTHDR;
+    }
+ 
+    mn->m_next = m;
+    m = mn;
+    if (len < MHLEN)
+        MH_ALIGN(m, len);
+  
+    m->m_len = len;
+  
+    return m;
+}

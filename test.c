@@ -31,51 +31,66 @@ bool mbuf_equal(struct mbuf *m1, struct mbuf *m2)
 
 void print_mbuf(struct mbuf *m, int offset, int len)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     while (m->m_len < offset)
     {
+        offset -= m->m_len;
         m = m->m_next;
     }
 
-	caddr_t p = mtod(m, caddr_t) + offset;
-    while (m->m_len < len)
+    while (len && m)
     {
+        caddr_t p = mtod(m, caddr_t) + offset;
         printf("%s\n", p);
 
-        offset = 0;
-        len -= m->m_len;
+        len -= min(m->m_len - offset, len);
         m = m->m_next;
-    }
-    printf("%s\n", p);
-    offset = 0;
+        offset = 0;
+    }              
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_mbuf_content(struct mbuf *m)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     int i = 0, total_len = 0;
     while (m)
     {
-        printf("%d mbuf: p=0x%p, m_len=%d\n", ++i, mtod(m, caddr_t), m->m_len);
+        printf("%dst mbuf: p=0x%p, m_len=%d\n", ++i, mtod(m, caddr_t), m->m_len);
+        printf("content: %s\n", mtod(m, caddr_t));
+      
         total_len += m->m_len;
 		m = m->m_next;
     }
-    printf("total_len=%d\n\n", total_len);
+
+    printf("total_len=%d\n", total_len);
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_global_ifnet()
 {
-    extern struct ifnet *ifnet;
-    struct ifnet *ifnet_backup = ifnet;
+    printf("\n**************%s START************\n", __FUNCTION__);
 
-    while (ifnet)
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = ifnet;
+
+    while (ifp)
     {
-        print_ifnet(ifnet);
-        ifnet = ifnet->if_next;
+        print_ifnet(ifp);
+        ifp = ifp->if_next;
     }
-    ifnet = ifnet_backup;
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_ifnet(struct ifnet *ifp)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     if (ifp)
     {
         printf("if_name: %s\n", ifp->if_name);
@@ -83,8 +98,6 @@ void print_ifnet(struct ifnet *ifp)
         printf("if_index: %d\n", ifp->if_index);
         printf("if_flags: %d\n", ifp->if_flags);
         printf("if_pcount: %d\n", ifp->if_pcount);
-
-        print_ifaddr(ifp->if_addrlist);
 
         printf("if_mtu: %d\n", ifp->if_mtu);
         printf("if_type: %d\n", ifp->if_type);
@@ -104,73 +117,109 @@ void print_ifnet(struct ifnet *ifp)
         printf("if_iqdrops: %d\n", ifp->if_iqdrops);
         printf("if_noproto: %d\n", ifp->if_noproto);
         printf("if_lastchange: _1\n");
+
+        printf("if_snd.ifq_head @ %p\n", ifp->if_snd.ifq_head);
+        printf("if_snd.ifq_tail @ %p\n", ifp->if_snd.ifq_tail);
+        printf("if_snd.ifq_len: %d\n", ifp->if_snd.ifq_len);
+        printf("if_snd.ifq_maxlen: %d\n", ifp->if_snd.ifq_maxlen);
+        printf("if_snd.ifq_drops: %d\n", ifp->if_snd.ifq_drops);
+
+        if (ifp->if_snd.ifq_head)
+            print_mbuf_content(ifp->if_snd.ifq_head);
+        else
+            printf("ifp->if_snd.ifq_head is NULL\n");
+        if (ifp->if_snd.ifq_tail)
+            print_mbuf_content(ifp->if_snd.ifq_tail);
+        else
+            printf("ifp->if_snd.ifq_tail is NULL\n");
+
+        print_ifaddr(ifp->if_addrlist);
     }
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_global_ifaddr()
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     extern int if_index;
     extern struct ifaddr **ifnet_addrs;
-    struct ifaddr **ifnet_addrs_backup = ifnet_addrs;
+    struct ifaddr **pifa = ifnet_addrs;
    
     int i = 0;
-    while (*ifnet_addrs && i++ < if_index)
+    while (*pifa && i++ < if_index)
     {
-        print_ifaddr(*ifnet_addrs);
-        ifnet_addrs++;
+        print_ifaddr(*pifa);
+        pifa++;
     }
-    ifnet_addrs = ifnet_addrs_backup;
+
+    printf("**************%s END************", __FUNCTION__);
 }
 
-void print_ifaddr(struct ifaddr *addrp)
+void print_ifaddr(struct ifaddr *ifa)
 {
-    if (addrp)
-    {
-        printf("ifa_addr: %p\n", addrp->ifa_addr);
-        printf("ifa_dstaddr: %p\n", addrp->ifa_dstaddr);
-        printf("ifa_netmask: %p\n", addrp->ifa_netmask);
-        printf("ifa_flags: %d\n", addrp->ifa_flags);
-        printf("ifa_refcnt: %d\n", addrp->ifa_refcnt);
-        printf("ifa_metric: %d\n", addrp->ifa_metric);
+    printf("\n**************%s START************\n", __FUNCTION__);
 
-        print_sockaddr_dl((struct sockaddr_dl*)addrp->ifa_addr);
-        print_sockaddr_dl((struct sockaddr_dl*)addrp->ifa_dstaddr);
-        print_sockaddr_dl((struct sockaddr_dl*)addrp->ifa_netmask);
+    if (ifa)
+    {
+        printf("ifa_addr: %p\n", ifa->ifa_addr);
+        printf("ifa_dstaddr: %p\n", ifa->ifa_dstaddr);
+        printf("ifa_netmask: %p\n", ifa->ifa_netmask);
+        printf("ifa_flags: %d\n", ifa->ifa_flags);
+        printf("ifa_refcnt: %d\n", ifa->ifa_refcnt);
+        printf("ifa_metric: %d\n", ifa->ifa_metric);
+
+        print_sockaddr_dl((struct sockaddr_dl*)ifa->ifa_addr);
+        print_sockaddr_dl((struct sockaddr_dl*)ifa->ifa_dstaddr);
+        print_sockaddr_dl((struct sockaddr_dl*)ifa->ifa_netmask);
     }
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
-void print_sockaddr_dl(struct sockaddr_dl *sip)
+void print_sockaddr_dl(struct sockaddr_dl *sdl)
 {
-    if (sip)
+    printf("\n**************%s START************\n", __FUNCTION__);
+
+    if (sdl)
     {
-        printf("sdl_len: %d\n", sip->sdl_len);
-        printf("sdl_family: %d\n", sip->sdl_family);
-        printf("sdl_index: %d\n", sip->sdl_index);
-        printf("sdl_type: %d\n", sip->sdl_type); // same as if_data: ifi_type
-        printf("sdl_nlen: %d\n", sip->sdl_nlen);
-        printf("sdl_alen: %d\n", sip->sdl_alen);
-        printf("sdl_slen: %d\n", sip->sdl_slen);
-        printf("sdl_data: %s\n", sip->sdl_data);
+        printf("sdl_len: %d\n", sdl->sdl_len);
+        printf("sdl_family: %d\n", sdl->sdl_family);
+        printf("sdl_index: %d\n", sdl->sdl_index);
+        printf("sdl_type: %d\n", sdl->sdl_type); // same as if_data: ifi_type
+        printf("sdl_nlen: %d\n", sdl->sdl_nlen);
+        printf("sdl_alen: %d\n", sdl->sdl_alen);
+        printf("sdl_slen: %d\n", sdl->sdl_slen);
+        printf("sdl_data: %s\n", sdl->sdl_data);
     }
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_i_global_ifnet(int index)
 {
-    extern struct ifnet *ifnet;
-    struct ifnet *ifnet_traverse = ifnet;
+    printf("\n**************%s START************\n", __FUNCTION__);
 
-    for (int i = 0; i < index && ifnet_traverse; i++)
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = ifnet;
+
+    for (int i = 0; i < index && ifp; i++)
     {
-        ifnet_traverse = ifnet_traverse->if_next;
+        ifp = ifp->if_next;
     }
-    if (ifnet_traverse == NULL)
+    if (ifp == NULL)
         printf("index is out of range of global ifnet\n");
 
-    print_ifnet(ifnet_traverse);
+    print_ifnet(ifp);
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_i_global_ifaddr(int index)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     extern struct ifaddr **ifnet_addrs;
     struct ifaddr **ifnet_addrs_traverse = ifnet_addrs;
 
@@ -182,4 +231,38 @@ void print_i_global_ifaddr(int index)
         printf("index is out of range of global ifnet_addrs\n");
 
     print_ifaddr(*ifnet_addrs_traverse);
+
+    printf("**************%s END************\n", __FUNCTION__);
+}
+
+void print_sockaddr(struct sockaddr *sa)
+{
+    printf("sa_len: %u\n", sa->sa_len);
+    printf("sa_family: %u\n", sa->sa_family);
+
+    printf("sa_data: %s\n", sa->sa_data);
+}
+
+void print_ifconf(struct ifconf *ifc)
+{
+    printf("ifc_len: %d\n", ifc->ifc_len);
+   
+    struct ifreq *ifrq = ifc->ifc_req;
+    while ((char*)ifrq < ((char*)ifc + ifc->ifc_len))   {
+        print_ifreq(ifrq);
+        ifrq++;
+    }
+}
+
+void print_ifreq(struct ifreq *ifrq)
+{
+    printf("ifr_name: %s\n", ifrq->ifr_name);
+
+    print_sockaddr(&ifrq->ifr_addr);
+    print_sockaddr(&ifrq->ifr_dstaddr);
+    print_sockaddr(&ifrq->ifr_broadaddr);
+
+    printf("ifr_flags: %d\n", ifrq->ifr_flags);
+    printf("ifr_metric: %d\n", ifrq->ifr_metric);
+    printf("ifr_data: %s\n", ifrq->ifr_data);
 }

@@ -25,28 +25,28 @@ inline unsigned long	htonl __P((unsigned long l))
 {
     unsigned char *c = (unsigned char *)&l;
 
-    return c[0] >> 3 | c[1] >> 1 | c[2] << 1 | c[3] << 3;
+    return c[0] >> 24 | c[1] >> 8 | c[2] << 8 | c[3] << 24;
 }
 
 inline unsigned short	htons __P((unsigned short s))
 {
     unsigned char *c = (unsigned char *)&s;
 
-    return c[0] >> 1 | c[1] << 1;
+    return c[0] >> 8 | c[1] << 8;
 }
 
 inline unsigned long	ntohl __P((unsigned long l))
 {
     unsigned char *c = (unsigned char *)&l;
 
-    return c[0] >> 3 | c[1] >> 1 | c[2] << 1 | c[3] << 3;
+    return c[0] >> 24 | c[1] >> 8 | c[2] << 8 | c[3] << 24;
 }
 
 inline unsigned short	ntohs __P((unsigned short s))
 {
     unsigned char *c = (unsigned char *)&s;
 
-    return c[0] >> 1 | c[1] << 1;
+    return c[0] >> 8 | c[1] << 8;
 }
 __END_DECLS
 

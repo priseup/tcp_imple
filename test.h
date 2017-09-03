@@ -23,5 +23,10 @@ void print_global_ifaddr();
 void print_i_global_ifaddr(int i);
 void print_sockaddr_dl(struct sockaddr_dl *sip);
 
+
+// chapter4
+void print_ifconf(struct ifconf *ifc);
+void print_ifreq(struct ifreq *ifrq);
+
 #endif // TEST_TEST_H
 

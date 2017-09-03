@@ -33,7 +33,7 @@ int ifconf(int cmd, caddr_t data)
     for (ifa = ifp->if_addrlist; space > sizeof(ifr) && ifp; ifp = ifp->if_next)
     {
         strncpy(ifr.ifr_name, ifp->if_name, IFNAMSIZ - 1);
-        ifr.ifr_name[strlen(ifr.ifr_name)] = ifp->if_unit + '0';
+        sprintf(ifr.ifr_name+strlen(ifr.ifr_name), "%d", ifp->if_unit);
 
         if (ifa == NULL)
         {
@@ -105,17 +105,17 @@ ifunit(name)
 {
     char ifname[16] = "";
     extern struct ifnet *ifnet;
-    struct ifnet *if_it = ifnet;
+    struct ifnet *ifp = ifnet;
 
-    while (if_it)
+    while (ifp)
     {
-        strcpy(ifname, if_it->if_name);
-        sprintf(ifname+strlen(ifname), "%d", if_it->if_unit);
+        strcpy(ifname, ifp->if_name);
+        sprintf(ifname+strlen(ifname), "%d", ifp->if_unit);
 
         if (strcmp(name, ifname) == 0)
-            return if_it;
+            return ifp;
 
-        if_it = if_it->if_next;
+        ifp = ifp->if_next;
     }
 
     return NULL;
@@ -225,12 +225,12 @@ void if_attach(struct ifnet *ifp)
 
 void ifinit()
 {
-    struct ifnet *global_ifnet = ifnet;
+    struct ifnet *ifp = ifnet;
 
-    while (global_ifnet)
+    while (ifp)
     {
-        global_ifnet->if_snd.ifq_maxlen = ifqmaxlen;
-        global_ifnet = global_ifnet->if_next;
+        ifp->if_snd.ifq_maxlen = ifqmaxlen;
+        ifp = ifp->if_next;
     }
 
     if_slowtimo(0);
@@ -238,22 +238,20 @@ void ifinit()
 
 void if_slowtimo(void *arg)
 {
-    struct ifnet *global_ifnet = ifnet;
+    struct ifnet *ifp = NULL;
 
-    while (global_ifnet)
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
     {
-        if (global_ifnet->if_timer == 0)
+        if (ifp->if_timer == 0)
             continue;
-        if (--global_ifnet->if_timer == 0)
+        if (--ifp->if_timer)
             continue;
 
-        if (global_ifnet->if_watchdog)
-            global_ifnet->if_watchdog(global_ifnet->if_unit);
-
-        global_ifnet = global_ifnet->if_next;
+        if (ifp->if_watchdog)
+            ifp->if_watchdog(ifp->if_unit);
     }
 
-    /*timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);*/
+    //timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);
 }
 
 void if_freenameindex(struct if_nameindex *a)
