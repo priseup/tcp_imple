@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "if.h"
+#include "radix.h"
 #include "if_types.h"
 #include "if_dl.h"
 #include "..\sys\mbuf.h"
@@ -23,7 +24,7 @@ int ifconf(int cmd, caddr_t data)
     struct ifconf *ifc = (struct ifconf *)data;
     struct ifnet *ifp = ifnet;
     struct ifaddr *ifa = NULL;
-    char *cp, *ep;
+    char *ep;
     struct ifreq ifr, *ifrp;
     int space = ifc->ifc_len, error = 0;
     ifrp = ifc->ifc_req;
@@ -32,7 +33,7 @@ int ifconf(int cmd, caddr_t data)
     for (ifa = ifp->if_addrlist; space > sizeof(ifr) && ifp; ifp = ifp->if_next)
     {
         strncpy(ifr.ifr_name, ifp->if_name, IFNAMSIZ - 1);
-        ifr.ifr_name[strlen(ifr.ifr_name)] = ifp->if_unit + '0';
+        sprintf(ifr.ifr_name+strlen(ifr.ifr_name), "%d", ifp->if_unit);
 
         if (ifa == NULL)
         {
@@ -104,17 +105,17 @@ ifunit(name)
 {
     char ifname[16] = "";
     extern struct ifnet *ifnet;
-    struct ifnet *if_it = ifnet;
+    struct ifnet *ifp = ifnet;
 
-    while (if_it)
+    while (ifp)
     {
-        strcpy(ifname, if_it->if_name);
-        sprintf(ifname+strlen(ifname), "%d", if_it->if_unit);
+        strcpy(ifname, ifp->if_name);
+        sprintf(ifname+strlen(ifname), "%d", ifp->if_unit);
 
         if (strcmp(name, ifname) == 0)
-            return if_it;
+            return ifp;
 
-        if_it = if_it->if_next;
+        ifp = ifp->if_next;
     }
 
     return NULL;
@@ -141,9 +142,9 @@ int ifioctl(struct socket *so, int cmd,
         ifrp->ifr_metric = ifp->if_metric;
         break;
     case SIOCSIFFLAGS:
-        if (ifp->if_flags & IFF_UP && (ifrp->ifr_flags & IFF_UP == 0))
+        if ((ifp->if_flags & IFF_UP) && ((ifrp->ifr_flags & IFF_UP) == 0))
             if_down(ifp);
-        if ((ifp->if_flags & IFF_UP == 0) && ifrp->ifr_flags & IFF_UP)
+        if (((ifp->if_flags & IFF_UP) == 0) && (ifrp->ifr_flags & IFF_UP))
             if_up(ifp);
 
         ifp->if_flags = (ifp->if_flags & IFF_CANTCHANGE) | (ifrp->ifr_flags & ~IFF_CANTCHANGE);
@@ -224,12 +225,12 @@ void if_attach(struct ifnet *ifp)
 
 void ifinit()
 {
-    struct ifnet *global_ifnet = ifnet;
+    struct ifnet *ifp = ifnet;
 
-    while (global_ifnet)
+    while (ifp)
     {
-        global_ifnet->if_snd.ifq_maxlen = ifqmaxlen;
-        global_ifnet = global_ifnet->if_next;
+        ifp->if_snd.ifq_maxlen = ifqmaxlen;
+        ifp = ifp->if_next;
     }
 
     if_slowtimo(0);
@@ -237,22 +238,20 @@ void ifinit()
 
 void if_slowtimo(void *arg)
 {
-    struct ifnet *global_ifnet = ifnet;
+    struct ifnet *ifp = NULL;
 
-    while (global_ifnet)
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
     {
-        if (global_ifnet->if_timer == 0)
+        if (ifp->if_timer == 0)
             continue;
-        if (--global_ifnet->if_timer == 0)
+        if (--ifp->if_timer)
             continue;
 
-        if (global_ifnet->if_watchdog)
-            global_ifnet->if_watchdog(global_ifnet->if_unit);
-
-        global_ifnet = global_ifnet->if_next;
+        if (ifp->if_watchdog)
+            ifp->if_watchdog(ifp->if_unit);
     }
 
-    /*timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);*/
+    //timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);
 }
 
 void if_freenameindex(struct if_nameindex *a)
@@ -290,3 +289,154 @@ void if_qflush(struct ifqueue *ifq)
 		ifq->ifq_drops++;
 	}
 }
+
+#define sockaddr_equal(addr1, addr2) \
+    memcmp((addr1), (addr2), (addr1)->sa_len) == 0
+
+struct	ifaddr *ifa_ifwithaddr(struct sockaddr *addr)
+{
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = NULL;
+    struct ifaddr *ifa = NULL;
+
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
+    {
+        for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
+        {
+            if (sockaddr_equal(addr, ifa->ifa_addr))
+            {
+                return ifa;
+            }
+            else if (sockaddr_equal(addr, ifa->ifa_broadaddr))
+            {
+                return ifa;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+struct	ifaddr *ifa_ifwithaf(int af)
+{
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = NULL;
+    struct ifaddr *ifa = NULL;
+
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
+    {
+        for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
+        {
+            if (af == ifa->ifa_addr->sa_family)
+            {
+                return ifa;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *addr)
+{
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = NULL;
+    struct ifaddr *ifa = NULL;
+
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
+    {
+        if ((ifp->if_flags & IFF_POINTOPOINT) == 0)
+            continue;
+
+        for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
+        {
+            if (sockaddr_equal(addr, ifa->ifa_dstaddr))
+            {
+                return ifa;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+struct	ifaddr *ifa_ifwithnet(struct sockaddr *addr)
+{
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = NULL;
+    struct ifaddr *ifa = NULL;
+    struct ifaddr *ifa_maybe = NULL;
+    u_int af = addr->sa_family;
+
+    if (af == AF_LINK)
+    {
+        struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
+        if (sdl->sdl_index && sdl->sdl_index <= if_index)
+            return ifnet_addrs[sdl->sdl_index-1];
+    }
+
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
+    {
+        for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
+        {
+            if (ifa->ifa_addr->sa_family != af
+                || ifa->ifa_netmask == 0)
+                next : continue;
+
+            char *cp = addr->sa_data;
+            char *cp2 = ifa->ifa_addr->sa_data;
+            char *cp3 = ifa->ifa_netmask->sa_data;
+            char *cplim = cp3 + ifa->ifa_netmask->sa_len;
+
+            while (cp3 < cplim)
+                if ((*cp++ ^ *cp2++) & *cp3++)
+                    goto next;
+            if (ifa_maybe == 0
+                || rn_refines((caddr_t)ifa->ifa_netmask,
+                (caddr_t)ifa_maybe->ifa_netmask))
+                ifa_maybe = ifa;
+        }
+    }
+
+    return ifa_maybe;
+}
+
+struct	ifaddr *ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
+{
+    register struct ifaddr *ifa;
+    register char *cp, *cp2, *cp3;
+    register char *cplim;
+    struct ifaddr *ifa_maybe = 0;
+    u_int af = addr->sa_family;
+
+    if (af >= AF_MAX)
+        return (0);
+    for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr->sa_family != af)
+            continue;
+        ifa_maybe = ifa;
+        if (ifa->ifa_netmask == 0) {
+            if (sockaddr_equal(addr, ifa->ifa_addr) ||
+                (ifa->ifa_dstaddr && sockaddr_equal(addr, ifa->ifa_dstaddr)))
+                return (ifa);
+            continue;
+        }
+        cp = addr->sa_data;
+        cp2 = ifa->ifa_addr->sa_data;
+        cp3 = ifa->ifa_netmask->sa_data;
+        cplim = ifa->ifa_netmask->sa_len + (char *)ifa->ifa_netmask;
+        for (; cp3 < cplim; cp3++)
+            if ((*cp++ ^ *cp2++) & *cp3)
+                break;
+        if (cp3 == cplim)
+            return (ifa);
+    }
+
+    return (ifa_maybe);
+}
+
+void link_rtrequest(int cmd, struct rtentry *rt, struct sockaddr *sa)
+{
+}
+
+#undef sockaddr_equal

@@ -2,9 +2,11 @@
 #include "if_types.h"
 #include "..\sys\errno.h"
 #include "..\sys\mbuf.h"
+#include "bpf.h"
 #include "route.h"
 #include "netisr.h"
 #include <stddef.h>
+#include <stdio.h>
 
 #define LOMTU 1536
 
@@ -42,7 +44,7 @@ int looutput(struct ifnet *ifp,
     extern struct timeval time;
     extern struct ifqueue ipintrq;
 
-    int s, isr;
+    int isr;
     struct ifqueue *ifq = NULL;
 
     if ((m->m_flags & M_PKTHDR) == 0)

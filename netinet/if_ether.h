@@ -86,7 +86,7 @@ struct sockaddr_inarp {
 #define	RTF_USETRAILERS	RTF_PROTO1	/* use trailers */
 #define RTF_ANNOUNCE	RTF_PROTO2	/* announce new arp entry */
 
-u_char	etherbroadcastaddr[6];
+extern u_char	etherbroadcastaddr[6];
 u_char	ether_ipmulticast_min[6];
 u_char	ether_ipmulticast_max[6];
 struct	ifqueue arpintrq;

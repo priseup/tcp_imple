@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #define	MSIZE		128		/* size of an mbuf */
-#define	MCLBYTES	1024
 
 #define	MLEN		(MSIZE - sizeof(struct m_hdr))	/* normal data len */
 #define	MHLEN		(MLEN - sizeof(struct pkthdr))	/* data len w/pkthdr */
@@ -214,40 +213,74 @@ struct mbuf
    /*(m) = m_retry((how), (type));    */\
 }
 
+/*
+ * Copy mbuf pkthdr from from to to.
+ * from must have M_PKTHDR set, and to must be empty.
+ */
+#define	M_COPY_PKTHDR(to, from) { \
+	(to)->m_pkthdr = (from)->m_pkthdr; \
+	(to)->m_flags = (from)->m_flags & M_COPYFLAGS; \
+	(to)->m_data = (to)->m_pktdat; \
+}
+
+/*
+ * Set the m_data pointer of a newly-allocated mbuf (m_get/MGET) to place
+ * an object of the specified size at the end of the mbuf, longword aligned.
+ */
+#define M_ALIGN(m, len) \
+{   \
+    (m)->m_data += (MLEN - (len)) &~ (sizeof(long) - 1);    \
+}
+
+/*
+ * As above, for mbufs allocated with m_gethdr/MGETHDR
+ * or initialized by M_COPY_PKTHDR.
+ */
 #define MH_ALIGN(m, length)    \
 {   \
-    (m)->m_data += MHLEN - (length);   \
-    (m)->m_len += (length);   \
-    (m)->m_pkthdr.len += (length);   \
+    (m)->m_data += (MHLEN - (length)) &~ (sizeof(long) - 1);    \
 }
 
+/*
+ * Compute the amount of space available
+ * before the current start of data in an mbuf.
+ */
+#define	M_LEADINGSPACE(m) \
+	((m)->m_flags & M_EXT ? /* (m)->m_data - (m)->m_ext.ext_buf */ 0 : \
+	    (m)->m_flags & M_PKTHDR ? (m)->m_data - (m)->m_pktdat : \
+	    (m)->m_data - (m)->m_dat)
+
+/*
+ * Compute the amount of space available
+ * after the end of data in an mbuf.
+ */
+#define	M_TRAILINGSPACE(m) \
+	((m)->m_flags & M_EXT ? (m)->m_ext.ext_buf + (m)->m_ext.ext_size - \
+	    ((m)->m_data + (m)->m_len) : \
+	    &(m)->m_dat[MLEN] - ((m)->m_data + (m)->m_len))
+
+/*
+ * Arrange to prepend space of size plen to mbuf m.
+ * If a new mbuf must be allocated, how specifies whether to wait.
+ * If how is M_DONTWAIT and allocation fails, the original mbuf chain
+ * is freed and m is set to NULL.
+ */
 #define M_PREPEND(m, length, how)   \
 {   \
-    if (MHLEN - (m)->m_len >= (length))   \
+    if (M_LEADINGSPACE(m) > length) \
     {   \
-        (m)->m_data -= (length);   \
+        (m)->m_data -= (length);    \
         (m)->m_len += (length);   \
-        (m)->m_pkthdr.len += (length);   \
-    }   \
-    else if (MHLEN - (m)->m_len < (length))   \
-    {   \
-        struct mbuf *n;   \
-        MGETHDR(n, how, (m)->m_type);   \
-        n->m_type = (m)->m_type;   \
-        n->m_flags = (m)->m_flags & ~M_EXT;   \
-        n->m_nextpkt = (m)->m_nextpkt;   \
-        n->m_pkthdr = (m)->m_pkthdr;   \
-        MH_ALIGN(n, (length));   \
-        n->m_next = (m);   \
-    }   \
+    }    \
+    else    \
+        (m) = m_prepend((m), (length), (how));    \
+    if ((m) && (m)->m_flags & M_PKTHDR)    \
+        (m)->m_pkthdr.len += (length);    \
 }
-
-
 
 void m_adj(struct mbuf *m, int len);
 void m_cat(struct mbuf *m, struct mbuf *n);
 
-struct mbuf *m_copy(struct mbuf *m, int offset, int len);
 void m_copydata(struct mbuf *m, int offset, int len, caddr_t cp);
 void m_copyback(struct mbuf *m, int offset, int len, caddr_t cp);
 struct mbuf *m_copym(struct mbuf *m, int offset, int len, int nowait);
@@ -259,6 +292,7 @@ struct mbuf *m_get(int nowait, int type);
 struct mbuf *m_getclr(int nowait, int type);
 struct mbuf *m_gethdr(int nowait, int type);
 struct mbuf *m_pullup(struct mbuf *m, int len);
+struct	mbuf *m_prepend (struct mbuf *, int, int);
 
 void m_reclaim();
 struct mbuf *m_retry(int i, int t);
@@ -275,6 +309,8 @@ struct mbuf *m_retry(int i, int t);
 
 /* length to m_copy to copy all */
 #define	M_COPYALL	1000000000
+
+#define m_copy(m, offset, len) m_copym((m), (offset), (len), M_DONTWAIT)
 
 /*
 * Mbuf statistics.

@@ -131,7 +131,6 @@ arpresolve(ac, rt, m, dst, desten)
 void
 arpintr()
 {
-    return 0;
 }
 
 /*

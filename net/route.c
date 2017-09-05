@@ -110,10 +110,23 @@ rtioctl(req, data, p)
 }
 
 struct ifaddr *
-ifa_ifwithroute(flags, dst, gateway)
-	int flags;
-	struct sockaddr	*dst, *gateway;
+ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 {
+    extern struct ifnet *ifnet;
+    struct ifnet *ifp = NULL;
+    struct ifaddr *ifa = NULL;
+
+    for (ifp = ifnet; ifp; ifp = ifp->if_next)
+    {
+        for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
+        {
+            //if ()
+            //{
+            //    return ifa;
+            //}
+        }
+    }
+
     return NULL;
 }
 

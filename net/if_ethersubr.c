@@ -33,13 +33,13 @@ ether_output(ifp, m0, dst, rt0)
 	struct rtentry *rt0;
 {
     short type;
-    int s, error = 0;
+    int error = 0;
     u_char edst[6];
     struct mbuf *m = m0;
     struct rtentry *rt;
     struct mbuf *mcopy = (struct mbuf *)0;
     struct ether_header *eh;
-    int off, len = m->m_pkthdr.len;
+    int len = m->m_pkthdr.len;
     struct arpcom *ac = (struct arpcom *)ifp;
 
     if (!(ifp->if_flags & IFF_UP))
@@ -64,7 +64,7 @@ ether_output(ifp, m0, dst, rt0)
         {
             if (rt->rt_gwroute == 0)
                 goto lookup;
-            if ((rt = rt->rt_gwroute)->rt_flags & RTF_UP == 0)
+            if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0)
             {
                 rtfree(rt);
                 rt = rt0;
@@ -86,7 +86,7 @@ lookup:
         if (!arpresolve(ac, rt, m, dst, edst))
             return 0;
         if ((ifp->if_flags & IFF_SIMPLEX) && (m0->m_flags & IFF_BROADCAST))
-            mcopy = m_copy(m0, 0, len, M_WAITOK);
+            mcopy = m_copy(m0, 0, len);
 
         type = ETHERTYPE_IP;
 
@@ -109,7 +109,7 @@ lookup:
         looutput(ifp, mcopy, dst, rt);
 
     M_PREPEND(m, sizeof (struct ether_header), M_DONTWAIT);
-    if (m)
+    if (m == NULL)
         senderr(ENOBUFS); // should be an error code
 
     eh = mtod(m, struct ether_header*);
@@ -118,15 +118,18 @@ lookup:
     memcpy(eh->ether_dhost, edst, sizeof (edst));
     memcpy(eh->ether_shost, ac->ac_enaddr, sizeof (ac->ac_enaddr));
 
-    if (IF_QFULL(&ifp->if_snd, m))
+    if (IF_QFULL(&ifp->if_snd))
     {
         IF_DROP(&ifp->if_snd);
         senderr(ENOBUFS);
     }
     IF_ENQUEUE(&ifp->if_snd, m0);
 
-    if (ifp->if_flags & IFF_OACTIVE == 0)
-        (ifp->if_start)(ifp);
+    if ((ifp->if_flags & IFF_OACTIVE) == 0)
+    {
+        if (ifp->if_start)
+            (ifp->if_start)(ifp);
+    }
 
     ifp->if_obytes = len + sizeof(struct ether_header);
     if (m->m_flags & M_MCAST)
@@ -134,7 +137,7 @@ lookup:
 
     bad:
     if (m)
-        m_free(m);
+        m_freem(m);
     return error;
 }
 
@@ -153,8 +156,11 @@ ether_input(ifp, eh, m)
     struct ifqueue *ifq = NULL;
     extern struct ifqueue ipintrq;
     struct arpcom *ac = (struct arpcom*)ifp;
+    
+    // cannot do it in global area;;;?????
+    ipintrq.ifq_maxlen = IFQ_MAXLEN;
 
-    if (ifp->if_flags & IFF_UP == 0)
+    if ((ifp->if_flags & IFF_UP) == 0)
     {
         m_freem(m);
         return ;
@@ -165,24 +171,23 @@ ether_input(ifp, eh, m)
 
     ifp->if_lastchange = time;
 
-    if (memcpy(eh->ether_dhost, etherbroadcastaddr, sizeof(etherbroadcastaddr)) == 0)
+    if (memcmp(eh->ether_dhost, etherbroadcastaddr, sizeof(etherbroadcastaddr)) == 0)
         m->m_flags |= M_BCAST;
-    if (eh->ether_dhost[0] & 0x1)
+    else if (eh->ether_dhost[0] & 0x1)
         m->m_flags |= M_MCAST;
 
-    if (eh->ether_type == AF_INET)
+    switch (htons(eh->ether_type))
     {
+    case ETHERTYPE_IP:
         ifq = &ipintrq;
-    }
-    else if (eh->ether_type == AF_ARP)
-    {
+        break;
+    case ETHERTYPE_ARP:
         ifq = &arpintrq;
-    }
-    else
-    {
+        break;
+    default:
         if (eh->ether_type > ETHERMTU)  // not process the ether_type or 802.3
-        /*if (eh->ether_type < 65535)*/
-            return ;
+            m_freem(m);                        /*if (eh->ether_type < 65535)*/
+        return;
     }
 
     if (IF_QFULL(ifq))
@@ -213,16 +218,16 @@ ether_sprintf(ap)
 void
 ether_ifattach(struct ifnet *ifp)
 {
-    struct ifaddr *addrlist = ifp->if_addrlist;
+    struct ifaddr *ifa = NULL;
 
     ifp->if_type = IFT_ETHER;
     ifp->if_addrlen = 6;
     ifp->if_hdrlen = 14;
     ifp->if_mtu = ETHERMTU;
 
-    for (; addrlist; addrlist = addrlist->ifa_next)
+    for (ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
     {
-        struct sockaddr_dl *dl = (struct sockaddr_dl *)(addrlist->ifa_addr);
+        struct sockaddr_dl *dl = (struct sockaddr_dl *)(ifa->ifa_addr);
         dl->sdl_alen = ifp->if_addrlen;
 
         memcpy(LLADDR(dl), ((struct arpcom*)ifp)->ac_enaddr, sizeof(((struct arpcom*)ifp)->ac_enaddr));

@@ -118,8 +118,8 @@ void leread(int unit, char *buf, int len)
     int datalen = len - sizeof(struct ether_header) - 4;  // 4: CRC of ether type......
     struct ether_header *eh = (struct ether_header *)buf;
     struct mbuf *mbuf = (struct mbuf *)(eh + 1);
-
-    NTOHS(eh->ether_type);
+    le->sc_if.if_flags = IFF_UP;
+    eh->ether_type = ntohs(eh->ether_type);
 
     if (datalen < 0)
     {
@@ -127,12 +127,12 @@ void leread(int unit, char *buf, int len)
         le->sc_if.if_ipackets++;
     }
   //  ntohl(89);
-    if (memcpy(eh->ether_dhost, etherbroadcastaddr, sizeof(etherbroadcastaddr)) == 0)
+    if (memcmp(eh->ether_dhost, etherbroadcastaddr, sizeof(etherbroadcastaddr)) == 0)
         mbuf->m_flags |= M_BCAST;
     if (eh->ether_dhost[0] & 0x1)
         mbuf->m_flags |= M_MCAST;
 
-    struct mbuf *m = m_devget(mbuf, mbuf->m_pkthdr.len, 0, (struct ifnet*)le, NULL);
+    struct mbuf *m = m_devget(mtod(mbuf, caddr_t), datalen, 0, (struct ifnet*)le, NULL);
     if (m == NULL)
     {
         return;
@@ -149,7 +149,7 @@ int lestart(struct ifnet *ifp)
 
     if (!ifp)
         return 0;
-    if (ifp->if_flags & IFF_RUNNING == 0)
+    if ((ifp->if_flags & IFF_RUNNING) == 0)
         return 0;
 
     le = &le_softc[ifp->if_unit];
@@ -181,11 +181,11 @@ int leioctl(struct ifnet *ifp, int cmd, caddr_t data)
     switch (cmd)
     {
     case SIOCSIFFLAGS:
-        if ((ifa->ifa_flags & IFF_UP == 0)
+        if (((ifa->ifa_flags & IFF_UP) == 0)
             && (ifp->if_flags & IFF_RUNNING))
             ifp->if_flags &= ~IFF_RUNNING;
         else if ((ifa->ifa_flags & IFF_UP)
-            && (ifp->if_flags & IFF_RUNNING == 0))
+            && ((ifp->if_flags & IFF_RUNNING) == 0))
             leinit(ifp->if_unit);
 
         if (((ifp->if_flags ^ le->sc_iflags) & IFF_PROMISC)

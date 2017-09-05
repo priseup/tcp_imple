@@ -1,11 +1,11 @@
 #ifndef NET_IF_H
 #define NET_IF_H
 
+#include "route.h"
 #include "..\sys\time.h"
 #include "..\sys\socket.h"
 #include "..\netinet\in.h"
 #include "../sys/mbuf.h"
-
 
 #define	IFF_UP		0x1		/* interface is up */
 #define	IFF_BROADCAST	0x2		/* broadcast address valid */
@@ -23,6 +23,8 @@
 #define	IFF_LINK1	0x2000		/* per link layer defined bit */
 #define	IFF_LINK2	0x4000		/* per link layer defined bit */
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
+
+#define	IFA_ROUTE	RTF_UP		/* route installed */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
@@ -182,7 +184,7 @@ struct ifaddr
     struct ifnet *ifa_ifp;
     struct sockaddr *ifa_addr;
     struct sockaddr *ifa_dstaddr;
-#define ifa_broadaddr ifa_dstadrr
+#define ifa_broadaddr ifa_dstaddr
     struct sockaddr *ifa_netmask;
     void(*ifa_rtrequest)();
     u_short ifa_flags;
@@ -209,26 +211,42 @@ struct ifaddr
 
 #define IF_ENQUEUE(ifq, m)  \
 {   \
-	m->m_nextpkt = (ifq)->ifq_tail->m_nextpkt; \
-	(ifq)->ifq_tail->m_nextpkt = m; \
+    if ((ifq)->ifq_len == 0)    \
+    {   \
+        (m)->m_nextpkt = NULL;  \
+        (ifq)->ifq_head = (m);  \
+    }   \
+    else    \
+    {   \
+        (m)->m_nextpkt = (ifq)->ifq_tail->m_nextpkt; \
+        (ifq)->ifq_tail->m_nextpkt = (m); \
+    }   \
+    (ifq)->ifq_tail = (m);  \
 	(ifq)->ifq_len++;   \
 }
 
 #define IF_PREPEND(ifq, m)  \
 {   \
-	m->m_nextpkt = (ifq)->ifq_head; \
-	(ifq)->ifq_head = m;    \
-	(ifq)->ifq_len++;   \
+    if ((ifq)->ifq_head == NULL)    \
+    {   \
+        IF_ENQUEUE(ifq, m)    \
+    }   \
+    else    \
+    {   \
+        (m)->m_nextpkt = (ifq)->ifq_head; \
+        (ifq)->ifq_head = m;    \
+        (ifq)->ifq_len++;   \
+    }   \
 }
 
 #define IF_DEQUEUE(ifq, m)  \
 {   \
-	m = NULL;   \
+	(m) = NULL;   \
 	if((ifq)->ifq_len > 0) \
     { \
-    m = (ifq)->ifq_head;    \
-	(ifq)->ifq_head = (ifq)->ifq_head->m_nextpkt;   \
-	(ifq)->ifq_len--;   \
+        (m) = (ifq)->ifq_head;    \
+        (ifq)->ifq_head = (ifq)->ifq_head->m_nextpkt;   \
+        (ifq)->ifq_len--;   \
     } \
 }
 
