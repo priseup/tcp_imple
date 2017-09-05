@@ -305,7 +305,7 @@ void slinput(int c, struct tty *tp)
     sc->sc_flags |= SC_ERROR;
 
 error:
-    sc->sc_flags |= SC_ERROR;
+    sc->sc_if.if_ierrors++;
 
 newpack:
     sc->sc_mp = sc->sc_buf = sc->sc_ep - SLMAX;
