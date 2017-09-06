@@ -441,7 +441,6 @@ void slstart(struct tty *tp)
             continue;
         }
 
-
         if (tp->t_outq.c_cc == 0)
         {
             sc->sc_if.if_obytes++;

@@ -8,6 +8,8 @@
 #include "hp300\dev\device.h"
 #include "hp300\include\endian.h"
 #include "sys\socketvar.h"
+#include "sys\tty.h"
+//#include "hp300\dev\device.h"
 
 #define N 1024
 
@@ -16,6 +18,16 @@
 #define CHAPTER3
 #define CHAPTER3
 #define CHAPTER4
+#define CHAPTER5
+#define CHAPTER6
+#define CHAPTER7
+#define CHAPTER8
+#define CHAPTER9
+#define CHAPTER10
+#define CHAPTER11
+#define CHAPTER12
+#define CHAPTER13
+#define CHAPTER14
 
 int main(void)
 {
@@ -132,9 +144,43 @@ int main(void)
     struct socket so;
     strcpy(((struct ifreq *)data)->ifr_name, "le0", strlen("le0"));
     //((struct ifreq *)data)->ifr_addr = (struct sockaddr *)(data + offsetof(struct ifreq, ifr_ifru));
-    ifioctl(&so, 0, data, NULL);
+//    ifioctl(&so, 0, data, NULL);
+
+    // if_down();
+    //if_up();
+    //leioctl();
 }
 #endif  // CHAPTER4
+
+#ifdef CHAPTER5
+{
+    extern struct sl_softc sl_softc[];
+
+    struct tty ty;
+    memset(&ty, 0, sizeof(ty));
+    ty.t_ospeed = 150;
+    ty.t_sc = &sl_softc[0];
+    ty.t_state = TS_CARR_ON;
+
+    dev_t dev = 0;
+    
+    slopen(dev, &ty);    // slinit() will be called, so no test for slinit();
+    
+    int tt[] = {1, 0xdb, 0xdd, 0xdb, 2, 0xdb, 0xdc, 3, 4, 5, 6, 7, 0xc0};
+    *(((struct sl_softc*)ty.t_sc)->sc_buf) = 0x70;
+
+    int dd = 0x70 & 0xf0;
+    for (int i = 0; i < _countof(tt); i++)
+        slinput(tt[i], &ty);
+
+    struct sockaddr sa;
+    sa.sa_family = AF_INET;
+   
+    struct mbuf *m1 = NULL;
+    MGET(m1, 0, 0);
+    sloutput(&sl_softc[0].sc_if, m1, &sa, NULL);
+}
+#endif // CHAPTER5
 
     return 0;
 }
