@@ -2,11 +2,14 @@
 #include "sys\mbuf.h"
 #include "net\if.h"
 #include "net\if_dl.h"
+#include "net\if_slvar.h"
 #include <string.h>
 #include <stdio.h>
 
 bool mbuf_equal(struct mbuf *m1, struct mbuf *m2)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     if (m1->m_flags != m2->m_flags)
         return false;
 
@@ -21,6 +24,8 @@ bool mbuf_equal(struct mbuf *m1, struct mbuf *m2)
         m1 = m1->m_next;
         m2 = m2->m_next;
     }
+
+    printf("**************%s END************\n", __FUNCTION__);
 
     if (m1 || m2)
         return false;
@@ -87,6 +92,29 @@ void print_global_ifnet()
     printf("**************%s END************\n", __FUNCTION__);
 }
 
+void print_ifqueue(struct ifqueue *ifq)
+{
+    printf("\n**************%s START************\n", __FUNCTION__);
+
+    printf("if_snd.ifq_head @ %p\n", ifq->ifq_head);
+    printf("if_snd.ifq_tail @ %p\n", ifq->ifq_tail);
+    printf("if_snd.ifq_len: %d\n", ifq->ifq_len);
+    printf("if_snd.ifq_maxlen: %d\n", ifq->ifq_maxlen);
+    printf("if_snd.ifq_drops: %d\n", ifq->ifq_drops);
+
+    if (ifq->ifq_head)
+        print_mbuf_content(ifq->ifq_head);
+    else
+        printf("ifq->ifq_head is NULL\n");
+    if (ifq->ifq_tail)
+        print_mbuf_content(ifq->ifq_tail);
+    else
+        printf("ifq->ifq_tail is NULL\n");
+
+    printf("**************%s END************\n", __FUNCTION__);
+}
+
+
 void print_ifnet(struct ifnet *ifp)
 {
     printf("\n**************%s START************\n", __FUNCTION__);
@@ -118,20 +146,7 @@ void print_ifnet(struct ifnet *ifp)
         printf("if_noproto: %d\n", ifp->if_noproto);
         printf("if_lastchange: _1\n");
 
-        printf("if_snd.ifq_head @ %p\n", ifp->if_snd.ifq_head);
-        printf("if_snd.ifq_tail @ %p\n", ifp->if_snd.ifq_tail);
-        printf("if_snd.ifq_len: %d\n", ifp->if_snd.ifq_len);
-        printf("if_snd.ifq_maxlen: %d\n", ifp->if_snd.ifq_maxlen);
-        printf("if_snd.ifq_drops: %d\n", ifp->if_snd.ifq_drops);
-
-        if (ifp->if_snd.ifq_head)
-            print_mbuf_content(ifp->if_snd.ifq_head);
-        else
-            printf("ifp->if_snd.ifq_head is NULL\n");
-        if (ifp->if_snd.ifq_tail)
-            print_mbuf_content(ifp->if_snd.ifq_tail);
-        else
-            printf("ifp->if_snd.ifq_tail is NULL\n");
+        print_ifqueue(&ifp->if_snd);
 
         print_ifaddr(ifp->if_addrlist);
     }
@@ -237,14 +252,20 @@ void print_i_global_ifaddr(int index)
 
 void print_sockaddr(struct sockaddr *sa)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     printf("sa_len: %u\n", sa->sa_len);
     printf("sa_family: %u\n", sa->sa_family);
 
     printf("sa_data: %s\n", sa->sa_data);
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_ifconf(struct ifconf *ifc)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     printf("ifc_len: %d\n", ifc->ifc_len);
    
     struct ifreq *ifrq = ifc->ifc_req;
@@ -252,10 +273,14 @@ void print_ifconf(struct ifconf *ifc)
         print_ifreq(ifrq);
         ifrq++;
     }
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
 
 void print_ifreq(struct ifreq *ifrq)
 {
+    printf("\n**************%s START************\n", __FUNCTION__);
+
     printf("ifr_name: %s\n", ifrq->ifr_name);
 
     print_sockaddr(&ifrq->ifr_addr);
@@ -265,4 +290,32 @@ void print_ifreq(struct ifreq *ifrq)
     printf("ifr_flags: %d\n", ifrq->ifr_flags);
     printf("ifr_metric: %d\n", ifrq->ifr_metric);
     printf("ifr_data: %s\n", ifrq->ifr_data);
+
+    printf("**************%s END************\n", __FUNCTION__);
+}
+
+void print_global_sl_softc()
+{
+    printf("\n**************%s START************\n", __FUNCTION__);
+
+    //print_ifqueue(&ifp->if_snd);
+
+    printf("**************%s END************\n", __FUNCTION__);
+}
+
+void print_i_global_sl_softc(int i)
+{
+    printf("\n**************%s START************\n", __FUNCTION__);
+
+    printf("**************%s END************\n", __FUNCTION__);
+}
+
+void print_sl_softc(struct sl_softc* sl)
+{
+    printf("\n**************%s START************\n", __FUNCTION__);
+
+    print_ifnet(&sl->sc_if);
+    print_ifqueue(&sl->sc_fastq);
+
+    printf("**************%s END************\n", __FUNCTION__);
 }
