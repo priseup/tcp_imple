@@ -382,7 +382,6 @@ void slstart(struct tty *tp)
     int len = 0;
     u_char bpfbuf[SLMTU + SLIP_HDRLEN];
 
-
     for (; ;)
     {
         if (tp->t_outq.c_cc != 0)

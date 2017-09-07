@@ -15,6 +15,7 @@ void  print_mbuf(struct mbuf *m, int offset, int len);
 void print_mbuf_content(struct mbuf *m);
 
 // chapter3
+void print_ifqueue(struct ifqueue *ifq);
 void print_ifnet(struct ifnet *ifp);
 void print_global_ifnet();
 void print_i_global_ifnet(int i);
@@ -23,10 +24,14 @@ void print_global_ifaddr();
 void print_i_global_ifaddr(int i);
 void print_sockaddr_dl(struct sockaddr_dl *sip);
 
-
 // chapter4
 void print_ifconf(struct ifconf *ifc);
 void print_ifreq(struct ifreq *ifrq);
+
+// chapter5
+void print_global_sl_softc();
+void print_i_global_sl_softc(int i);
+void print_sl_softc(struct sl_softc*);
 
 #endif // TEST_TEST_H
 

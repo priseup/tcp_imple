@@ -177,20 +177,16 @@ struct mbuf
 #define MFREE(m, n) \
 {   \
     (n) = (m)->m_next;   \
-    (n)->m_type = (m)->m_type;   \
-    (n)->m_flags = (m)->m_flags & ~M_EXT;\
     int ref = 2;   \
     ref--;   \
     if ((m)->m_flags & M_EXT)   \
     {   \
-        if (ref == 0)   \
+        if ((m)->m_ext.ext_free)   \
         {   \
-            free((m)->m_ext.ext_buf);   \
+            (m)->m_ext.ext_free((m)->m_ext.ext_buf, (m)->m_ext.ext_size);   \
         }   \
-        free((m));  \
-        /*FREE((m)->m_ext.ext.buf);   */\
-        /*FREE((m));   */\
-        (n)->m_flags |= M_PKTHDR;   \
+        else    \
+            free((m)->m_ext.ext_buf); \
     }   \
 }
 

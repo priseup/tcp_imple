@@ -1,5 +1,6 @@
 #include "test.h"
 #include "sys\mbuf.h"
+#include "net\slip.h"
 #include "net\if.h"
 #include "net\if_slvar.h"
 #include "netinet\if_ether.h"
@@ -155,6 +156,7 @@ int main(void)
 #ifdef CHAPTER5
 {
     extern struct sl_softc sl_softc[];
+    extern struct ifnet *ifnet;
 
     struct tty ty;
     memset(&ty, 0, sizeof(ty));
@@ -178,7 +180,25 @@ int main(void)
    
     struct mbuf *m1 = NULL;
     MGET(m1, 0, 0);
+   
+    extern int cfreecount;
+    cfreecount = 1500;
     sloutput(&sl_softc[0].sc_if, m1, &sa, NULL);
+    cfreecount = 0;
+
+//    slclose(&ty);
+
+    sltioctl(&ty, SLIOCGUNIT, (caddr_t)&tt, 0);
+    printf("tt[0]: %d, if_unit: %d\n", tt[0],
+        ((struct sl_softc*)ty.t_sc)->sc_if.if_unit);
+
+    struct rtentry rt;
+    rt.rt_flags = RTF_UP;
+    
+    struct ifnet *ifp = ifnet;
+    m1->m_flags |= M_PKTHDR;
+    looutput(ifp, m1, &sa, &rt);
+    print_i_global_ifnet(ifp-ifnet);
 }
 #endif // CHAPTER5
 
