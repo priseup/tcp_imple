@@ -2,6 +2,7 @@
 #include "if_types.h"
 #include "..\sys\errno.h"
 #include "..\sys\mbuf.h"
+#include "..\sys\sockio.h"
 #include "bpf.h"
 #include "route.h"
 #include "netisr.h"
@@ -33,7 +34,23 @@ void loopattach(int n)
 
 int loioctl(struct ifnet *ifp, int cmd, caddr_t data)
 {
-	return 0;
+    struct ifaddr *ifa;
+    struct ifreq *ifr;
+    int error = 0;
+    
+    switch (cmd)
+    {
+    case SIOCSIFADDR:
+        ifp->if_flags |= IFF_UP;
+        ifa = (struct ifaddr *)data;
+
+        // everything else is done at a higher level.
+        break;
+    default:
+        error = EINVAL;
+        break;
+    }
+    return error;
 }
 
 int looutput(struct ifnet *ifp,

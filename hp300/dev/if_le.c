@@ -180,6 +180,19 @@ int leioctl(struct ifnet *ifp, int cmd, caddr_t data)
 
     switch (cmd)
     {
+    case SIOCSIFADDR:
+        ifp->if_flags |= IFF_UP;
+        switch (ifa->ifa_addr->sa_family)
+        {
+        case AF_INET:
+            leinit(ifp->if_unit); // before arpwhohas
+            //((struct arpcom *)ifp)->ac_ipaddr = IA_SIN(ifa)->sin_addr;
+            //arpwhohas((struct arpcom *)ifp, &IA_SIN(ifa)->sin_addr);
+            break;
+        default:
+            leinit(ifp->if_unit);
+            break;
+        }
     case SIOCSIFFLAGS:
         if (((ifa->ifa_flags & IFF_UP) == 0)
             && (ifp->if_flags & IFF_RUNNING))
