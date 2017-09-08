@@ -33,5 +33,7 @@ void print_global_sl_softc();
 void print_i_global_sl_softc(int i);
 void print_sl_softc(struct sl_softc*);
 
+// chapter6
+
 #endif // TEST_TEST_H
 

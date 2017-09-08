@@ -298,7 +298,14 @@ void print_global_sl_softc()
 {
     printf("\n**************%s START************\n", __FUNCTION__);
 
-    //print_ifqueue(&ifp->if_snd);
+#define NSL 32
+
+    extern struct sl_softc sl_softc[];
+    for (int i = 0; i < NSL; i++)
+        if (sl_softc + i)
+            print_sl_softc(sl_softc + i);
+
+#undef NSL
 
     printf("**************%s END************\n", __FUNCTION__);
 }
@@ -306,6 +313,9 @@ void print_global_sl_softc()
 void print_i_global_sl_softc(int i)
 {
     printf("\n**************%s START************\n", __FUNCTION__);
+
+    extern struct sl_softc sl_softc[];
+    print_sl_softc(sl_softc + i);
 
     printf("**************%s END************\n", __FUNCTION__);
 }
@@ -316,6 +326,16 @@ void print_sl_softc(struct sl_softc* sl)
 
     print_ifnet(&sl->sc_if);
     print_ifqueue(&sl->sc_fastq);
+    
+    printf("sc_ttyp @ %p\n", sl->sc_ttyp);
+    printf("sc_mp @ %p : %s\n", sl->sc_mp, sl->sc_mp);
+    printf("sc_ep @ %p : %s\n", sl->sc_ep, sl->sc_ep);
+    printf("sc_buf @ %p : %s\n", sl->sc_buf, sl->sc_buf);
+    printf("sc_flags: %d\n", sl->sc_flags);
+    printf("sc_escape: %d\n", sl->sc_escape);
+    printf("sc_lasttime, sc_abortcount, sc_starttime\n");
+    printf("sc_comp: need function\n");
+    printf("sc_bpf: %s\n", sl->sc_bpf);
 
     printf("**************%s END************\n", __FUNCTION__);
 }

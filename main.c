@@ -202,5 +202,17 @@ int main(void)
 }
 #endif // CHAPTER5
 
-    return 0;
+#ifdef CHAPTER6
+{
+    // all functions of chapter6 are copied from the book and simple,
+    // so no test for chapter6.......
+}
+#endif  // CHAPTER6
+
+#ifdef CHAPTER7
+{
+}
+#endif  // CHAPTER7
+
+return 0;
 }
