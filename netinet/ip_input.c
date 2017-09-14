@@ -94,7 +94,7 @@ void
 ip_init()
 {
     struct protosw *pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
-    if (pr != NULL)
+    if (pr == NULL)
         perror("canot find the protosw\n");
 
     for (int i = 0; i < IPPROTO_MAX; i++)

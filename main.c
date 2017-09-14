@@ -211,6 +211,17 @@ int main(void)
 
 #ifdef CHAPTER7
 {
+    domaininit();
+
+    pfslowtimo(NULL);
+    pffasttimo(NULL);
+
+    struct protosw *pr1 = pffindtype(PF_INET, SOCK_RAW);
+    struct protosw *pr2 = pffindproto(PF_INET, 27, SOCK_RAW);
+
+    ip_init();
+
+    //net_sysctl();
 }
 #endif  // CHAPTER7
 

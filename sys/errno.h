@@ -1,7 +1,7 @@
 #ifndef SYS_ERRNO_H
 #define SYS_ERRNO_H
 
-#ifndef KERNEL
+#ifdef KERNEL
 extern int errno;			/* global error number */
 #endif
 

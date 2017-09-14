@@ -279,6 +279,48 @@
     <ClInclude Include="..\..\net\netisr.h">
       <Filter>Header Files\net</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\netinet\igmp.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\ip_icmp.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp_timer.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\udp.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\udp_var.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\igmp_var.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\icmp_var.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\ip_mroute.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp_debug.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp_fsm.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp_seq.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcp_var.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\netinet\tcpip.h">
+      <Filter>Header Files\netinet</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\net\bpf.c">
@@ -352,6 +394,36 @@
     </ClCompile>
     <ClCompile Include="..\..\conf\param.c">
       <Filter>Source Files\conf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\igmp.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\ip_icmp.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\ip_output.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\raw_ip.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\tcp_input.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\tcp_subr.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\tcp_timer.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\tcp_usrreq.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\udp_usrreq.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\ip_mroute.c">
+      <Filter>Source Files\netinet</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
