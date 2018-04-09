@@ -135,7 +135,7 @@ lookup:
     if (m->m_flags & M_MCAST)
         ifp->if_omcasts++;
 
-    bad:
+bad:
     if (m)
         m_freem(m);
     return error;

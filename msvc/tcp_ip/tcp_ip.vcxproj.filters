@@ -76,6 +76,9 @@
     <Filter Include="Source Files\conf">
       <UniqueIdentifier>{bb9f878b-3c78-4b0f-8c18-009045661705}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\hp300\hp300">
+      <UniqueIdentifier>{a05dfc20-d37c-495a-9d40-3a477d151845}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\net\bpf.h">
@@ -321,6 +324,18 @@
     <ClInclude Include="..\..\netinet\tcpip.h">
       <Filter>Header Files\netinet</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\sys\sysctl.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\buf.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\msgbuf.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\queue.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\net\bpf.c">
@@ -424,6 +439,15 @@
     </ClCompile>
     <ClCompile Include="..\..\netinet\ip_mroute.c">
       <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\netinet\in_cksum.c">
+      <Filter>Source Files\netinet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\kern_sysctl.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\hp300\hp300\in_cksum.c">
+      <Filter>Source Files\hp300\hp300</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

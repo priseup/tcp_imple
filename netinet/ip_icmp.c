@@ -81,7 +81,14 @@ icmp_send(m, opts)
 n_time
 iptime()
 {
-    return 0;
+    struct timeval atv;
+    u_long t;
+
+    atv.tv_sec = 0;
+    atv.tv_usec = 4567000;
+//    microtime(&atv);
+    t = (atv.tv_sec % (24 * 60 * 60)) * 1000 + atv.tv_usec / 1000;
+    return (htonl(t));
 }
 
 int

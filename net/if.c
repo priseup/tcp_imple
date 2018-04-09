@@ -293,6 +293,7 @@ void if_qflush(struct ifqueue *ifq)
 #define sockaddr_equal(addr1, addr2) \
     memcmp((addr1), (addr2), (addr1)->sa_len) == 0
 
+// locate an interface based on a complete address
 struct	ifaddr *ifa_ifwithaddr(struct sockaddr *addr)
 {
     extern struct ifnet *ifnet;
@@ -317,6 +318,7 @@ struct	ifaddr *ifa_ifwithaddr(struct sockaddr *addr)
     return NULL;
 }
 
+// find an interface using a specific address family
 struct	ifaddr *ifa_ifwithaf(int af)
 {
     extern struct ifnet *ifnet;
@@ -337,6 +339,7 @@ struct	ifaddr *ifa_ifwithaf(int af)
     return NULL;
 }
 
+// locate the point to point interface with a given destination address
 struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *addr)
 {
     extern struct ifnet *ifnet;
@@ -360,6 +363,8 @@ struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *addr)
     return NULL;
 }
 
+// find an interface on a specific network.
+// if many, choice is most specific found
 struct	ifaddr *ifa_ifwithnet(struct sockaddr *addr)
 {
     extern struct ifnet *ifnet;
@@ -401,6 +406,7 @@ struct	ifaddr *ifa_ifwithnet(struct sockaddr *addr)
     return ifa_maybe;
 }
 
+// find an interface address specific to an interface best matching
 struct	ifaddr *ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 {
     register struct ifaddr *ifa;

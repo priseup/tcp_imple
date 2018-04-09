@@ -1,5 +1,7 @@
 #include "radix.h"
-/*#include "../sys/domain.h"*/
+#include "../sys/domain.h"
+#include "../sys/systm.h"
+#include "../sys/param.h"
 
 /*
  * Routines to build and maintain radix trees for routing lookups.

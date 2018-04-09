@@ -174,6 +174,7 @@
     <ClInclude Include="..\..\net\route.h" />
     <ClInclude Include="..\..\net\slcompress.h" />
     <ClInclude Include="..\..\net\slip.h" />
+    <ClInclude Include="..\..\sys\buf.h" />
     <ClInclude Include="..\..\sys\callout.h" />
     <ClInclude Include="..\..\sys\cdefs.h" />
     <ClInclude Include="..\..\sys\device.h" />
@@ -188,9 +189,11 @@
     <ClInclude Include="..\..\sys\kernel.h" />
     <ClInclude Include="..\..\sys\malloc.h" />
     <ClInclude Include="..\..\sys\mbuf.h" />
+    <ClInclude Include="..\..\sys\msgbuf.h" />
     <ClInclude Include="..\..\sys\myalgo.h" />
     <ClInclude Include="..\..\sys\proc.h" />
     <ClInclude Include="..\..\sys\protosw.h" />
+    <ClInclude Include="..\..\sys\queue.h" />
     <ClInclude Include="..\..\sys\resource.h" />
     <ClInclude Include="..\..\sys\resourcevar.h" />
     <ClInclude Include="..\..\sys\select.h" />
@@ -199,6 +202,7 @@
     <ClInclude Include="..\..\sys\socketvar.h" />
     <ClInclude Include="..\..\sys\sockio.h" />
     <ClInclude Include="..\..\sys\stat.h" />
+    <ClInclude Include="..\..\sys\sysctl.h" />
     <ClInclude Include="..\..\sys\syslog.h" />
     <ClInclude Include="..\..\sys\systm.h" />
     <ClInclude Include="..\..\sys\termios.h" />
@@ -215,8 +219,10 @@
   <ItemGroup>
     <ClCompile Include="..\..\conf\param.c" />
     <ClCompile Include="..\..\hp300\dev\if_le.c" />
+    <ClCompile Include="..\..\hp300\hp300\in_cksum.c" />
     <ClCompile Include="..\..\kern\init_main.c" />
     <ClCompile Include="..\..\kern\kern_clock.c" />
+    <ClCompile Include="..\..\kern\kern_sysctl.c" />
     <ClCompile Include="..\..\kern\tty.c" />
     <ClCompile Include="..\..\kern\tty_subr.c" />
     <ClCompile Include="..\..\kern\uipc_domain.c" />
@@ -226,6 +232,7 @@
     <ClCompile Include="..\..\netinet\if_ether.c" />
     <ClCompile Include="..\..\netinet\igmp.c" />
     <ClCompile Include="..\..\netinet\in.c" />
+    <ClCompile Include="..\..\netinet\in_cksum.c" />
     <ClCompile Include="..\..\netinet\in_proto.c" />
     <ClCompile Include="..\..\netinet\ip_icmp.c" />
     <ClCompile Include="..\..\netinet\ip_input.c" />

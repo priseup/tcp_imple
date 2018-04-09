@@ -1,9 +1,9 @@
 #include "../sys/mbuf.h"
 #include "../sys/socket.h"
-/*#include "../sys/socketvar.h"*/
+#include "../sys/socketvar.h"
 #include "../sys/domain.h"
 #include "../sys/protosw.h"
-/*#include "../sys/ioctl.h"*/
+#include "../sys/ioctl.h"
 
 #include "if.h"
 #include "route.h"
@@ -11,28 +11,6 @@
 
 #include "../netinet/in.h"
 #include "../netinet/in_var.h"
-
-
-/*#include <sys/param.h>*/
-/*#include <sys/systm.h>*/
-/*#include <sys/proc.h>*/
-/*#include <sys/mbuf.h>*/
-/*#include <sys/socket.h>*/
-/*#include <sys/socketvar.h>*/
-/*#include <sys/domain.h>*/
-/*#include <sys/protosw.h>*/
-/*#include <sys/ioctl.h>*/
-
-/*#include <net/if.h>*/
-/*#include <net/route.h>*/
-/*#include <net/raw_cb.h>*/
-
-/*#include <netinet/in.h>*/
-/*#include <netinet/in_var.h>*/
-
-/*#ifdef NS*/
-/*#include <netns/ns.h>*/
-/*#endif*/
 
 #define	SA(p) ((struct sockaddr *)(p))
 

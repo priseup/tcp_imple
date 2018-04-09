@@ -45,7 +45,7 @@ struct	in_aliasreq {
 	((ntohl((in).s_addr) & ~((struct in_ifaddr *)(ifa)->ia_subnetmask))
 			
 
-#ifdef	KERNEL
+#ifndef	KERNEL
 extern	struct	in_ifaddr *in_ifaddr;
 extern	struct	ifqueue	ipintrq;		/* ip packet input queue */
 void	in_socktrim(struct sockaddr_in *);
@@ -98,7 +98,7 @@ struct in_multi {
 	struct	in_multi *inm_next;	/* ptr to next multicast address */
 };
 
-#ifdef KERNEL
+#ifndef KERNEL
 /*
  * Structure used by macros below to remember position when stepping through
  * all of the in_multi records.
