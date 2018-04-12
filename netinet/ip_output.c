@@ -136,11 +136,118 @@ ip_output(m0, opt, ro, flags, imo)
     }
     else
     {
-        // 断开分组
+        if (!(ip->ip_off & IP_DF))
+        {
+            m_free(m0);
+            ipstat.ips_cantfrag++;
+            return EMSGSIZE;
+        }
+
+        int step = (ifp->if_baudrate - ip->ip_hl << 2) & ~7;
+        if (step % 8)
+            return EMSGSIZE;
+        {
+            int mhlen = hlen + step, firstlen = 0, mnext = 0;
+            struct mbuf *n = NULL;
+            do
+            {
+                if (mhlen + step < ip->ip_len)
+                    len = step;
+                else
+                    len = ip->ip_len - mhlen;
+
+                struct mbuf *n = m_get(0, MT_DATA);
+                if (!n)
+                {
+                    m = n;
+                    goto sendorfree;
+                }
+
+                // 为链路层首部腾出空间
+                // 如果ip_ouput不这么做，则网络接口驱动器就必须再分配一个
+                // mbuf来存放链路层首部或移动数据。
+                // 两种工作都很耗时，在这里预分配将其避免
+                mtod(n, caddr_t) += max_linkhdr;
+
+                memcpy(mtod(n, caddr_t), ip, sizeof *ip);
+                int optlen = ip_optcopy(ip, mtod(n, struct ip*));
+                
+                struct ip *frag_ip = mtod(n, struct ip*);
+                frag_ip->ip_hl = (sizeof (struct ip) + optlen) >> 2;
+                frag_ip->ip_off = (mnext - hlen) / 8 + ip->ip_off; // ip可能也是一个被frag的分组
+                frag_ip->ip_off &= ~IP_DF;
+
+                if (ip->ip_off & IP_MF)
+                {
+                    frag_ip->ip_off &= IP_MF;
+                }
+                else
+                {
+                    if (len >= 8)
+                        frag_ip->ip_off &= IP_MF;
+                }
+
+                struct mbuf *next = NULL;
+                if ((next = m_copy(m0, mnext, len)) == NULL)
+                {
+                    m = n;
+                    goto sendorfree;
+                }
+                n->m_next = next;
+
+                n->m_len += sizeof(struct ip) + optlen;
+                n->m_pkthdr.len = n->m_len + next->m_len;
+                HTONS(frag_ip->ip_len);
+                HTONS(frag_ip->ip_off);
+
+                in_cksum(n, frag_ip->ip_hl << 2);
+                n->m_pkthdr.rcvif = NULL;
+
+                m->m_nextpkt = n;
+                m = n;
+            } while (mhlen < ip->ip_len);
+
+            m = m0;
+            ip->ip_len = hlen + step;
+            ip->ip_off |= IP_MF;
+            m_adj(m, ip->ip_len - ip->ip_len);
+
+            HTONS(ip->ip_len);
+            HTONS(ip->ip_off);
+        }
     }
 
     if (ro == &iproute)
         RTFREE(ro->ro_rt);
+
+sendorfree:
+    if (!m)
+    {
+        m = m0;
+        while (m)
+        {
+            m_freem(m);
+            m = m->m_nextpkt;
+        }
+        return ENOBUFS;
+    }
+    else
+    {
+        m = m0;
+        int err = 0;
+        while (m)
+        {
+            if (err)
+                m_freem(m);
+            else
+                if (ifp->if_output)
+                    err = (ifp->if_output)(ifp, m, NULL, ro->ro_rt);
+             
+            m = m->m_nextpkt;
+        }
+
+        return 0;
+    }
 
 bad:
     m_free(m0);
@@ -216,7 +323,38 @@ int
 ip_optcopy(ip, jp)
 	struct ip *ip, *jp;
 {
-    return 0;
+    u_char *src = (u_char *)(ip + 1);
+    u_char *dst = (u_char *)(jp + 1);
+    int src_len = (ip->ip_hl << 2) - sizeof *ip;
+    int opt_len = 0;
+   
+    for (; src_len > 0; src_len -= opt_len)
+    {
+        int opt_type = src[IPOPT_OPTVAL];
+        if (opt_type == IPOPT_EOL)
+            break;
+        if (opt_type == IPOPT_NOP)
+        {
+            opt_len += 1;
+            *dst++ = *src++;
+            continue;
+        }
+        if (IPOPT_COPIED(opt_type))
+        {
+            opt_len = src[IPOPT_OLEN];
+            memcpy(dst, src, opt_len);
+            dst += opt_len;
+            src += opt_len;
+        }
+    }
+
+    while ((dst - (u_char *)ip) % 4)
+    {
+        *dst++ = IPOPT_EOL;
+
+    }
+
+    return dst - (u_char *)(jp + 1);
 }
 
 /*
