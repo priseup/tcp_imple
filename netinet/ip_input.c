@@ -6,6 +6,7 @@
 #include "../sys/domain.h"
 #include "../sys/mbuf.h"
 #include "../sys/sysctl.h"
+#include "sys/systm.h"
 
 #include "../net/if.h"
 #include "../net/route.h"
@@ -20,9 +21,9 @@
 
 #ifndef	IPFORWARDING
 #ifdef GATEWAY
-#define	IPFORWARDING	1	/* forward IP packets not for us */
+#define	IPFORWARDING	1	/* forward p packets not for us */
 #else /* GATEWAY */
-#define	IPFORWARDING	0	/* don't forward IP packets not for us */
+#define	IPFORWARDING	0	/* don't forward p packets not for us */
 #endif /* GATEWAY */
 #endif /* IPFORWARDING */
 #ifndef	IPSENDREDIRECTS
@@ -36,7 +37,7 @@ int	ip_defttl = IPDEFTTL;
 int	ipprintfs = 0;
 #endif
 
-extern  struct ipq	ipq;			/* ip reass. queue */
+extern  struct ipq	ipq;			/* p reass. queue */
 extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
 
@@ -45,9 +46,9 @@ int	ipqmaxlen = IFQ_MAXLEN;
 struct	in_ifaddr *in_ifaddr;			/* first inet address */
 struct	ifqueue ipintrq;
 /*
- * We need to save the IP options in case a protocol wants to respond
+ * We need to save the p options in case a protocol wants to respond
  * to an incoming packet over the same route if the packet got here
- * using IP source routing.  This allows connection establishment and
+ * using p source routing.  This allows connection establishment and
  * maintenance when the remote end is on a network that is not known
  * to us.
  */
@@ -68,8 +69,8 @@ u_long	*ip_ifmatrix;
 
 static void save_rte (u_char *, struct in_addr);
 /*
- * IP initialization: fill in IP protocol switch table.
- * All protocols not implemented in kernel go to raw IP protocol handler.
+ * p initialization: fill in p protocol switch table.
+ * All protocols not implemented in kernel go to raw p protocol handler.
  */
 void
 ip_init()
@@ -101,7 +102,7 @@ struct	sockaddr_in ipaddr = { sizeof(ipaddr), AF_INET };
 struct	route ipforward_rt;
 
 /*
- * Ip input routine.  Checksum and byte swap header.  If fragmented
+ * p input routine.  Checksum and byte swap header.  If fragmented
  * try to reassemble.  Process options.  Pass to next level.
  */
 void
@@ -217,7 +218,36 @@ next:
     goto next;
 
 ours:
-    ;  // reassembly
+    if ((ip->ip_off & IP_OFFMASK)
+        || (ip->ip_off & IP_MF))
+    {
+        m = m_pullup(m, ip->ip_len);
+        ip = mtod(m, struct p*);
+
+        struct ipq *found = NULL;
+        for (found = ipq.next; found != NULL; found = found->next)
+        {
+            if (found->ipq_id == ip->ip_id
+                && found->ipq_src.s_addr == ip->ip_src.s_addr
+                && found->ipq_dst.s_addr == ip->ip_dst.s_addr
+                && found->ipq_p == ip->ip_p)
+                break;
+        }
+
+        ip->ip_len -= ip->ip_hl << 2;
+        ((struct ipasfrag *)ip)->ipf_mff |= ip->ip_off & IP_MF ? 1 : 0;
+        ip->ip_off = (ip->ip_off & IP_OFFMASK) << 3;
+
+        if (ip = ip_reass((struct ipasfrag *)ip, found) == NULL)
+            goto next;
+    }
+    else
+    {
+        ip->ip_len -= ip->ip_hl << 2;
+    }
+
+    (*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen);
+    goto next;
 bad:
     m_freem(m);
     goto next;
@@ -234,6 +264,119 @@ ip_reass(ip, fp)
 	register struct ipasfrag *ip;
 	register struct ipq *fp;
 {
+    int hlen = ip->ip_hl << 2;
+    struct mbuf *m = dtom(ip);
+    m->m_len -= hlen;
+    m->m_data += hlen;
+    struct ipasfrag *prev = NULL;
+
+    if (fp == NULL)
+    {
+        struct mbuf *n = m_get(0, MT_DATA);
+        if (n == NULL)
+            goto dropfrag;
+        fp = mtod(n, struct ipq *);
+
+        fp->ipq_id = ip->ip_id;
+        fp->ipq_p = ip->ip_p;
+        fp->ipq_src = ((struct ip*)ip)->ip_src;
+        fp->ipq_dst = ((struct ip*)ip)->ip_dst;
+        fp->ipq_ttl = IPFRAGTTL;
+
+        insque(fp, &ipq);
+        prev = (struct ipasfrag *)fp;
+
+        goto insert;
+    }
+
+    struct ipasfrag *next = NULL;
+    for (next = fp->ipq_next; next != (struct ipasfrag *)fp; next = next->ipf_next)
+    {
+        if (next->ip_off > ip->ip_off)
+            break;
+    }
+    prev = next->ipf_prev;
+
+    // totally overlapped with previous, drop current fragment
+    if (prev->ip_off < ip->ip_off
+        && prev->ip_off + prev->ip_len >= ip->ip_off + ip->ip_len)
+    {
+        m_freem(m);
+        return NULL;
+    }
+
+    // overlapped with the end of previous, drop the front part of current fragment
+    if (prev->ip_off + prev->ip_len > ip->ip_off)
+    {
+        m_adj(m, ip->ip_off - prev->ip_off - prev->ip_len);
+        ip->ip_len -= prev->ip_off + prev->ip_len - ip->ip_off;
+    }
+
+    // totally overlapped with next, drop the next
+    while (ip->ip_off < next->ip_off
+        && ip->ip_off + ip->ip_len >= next->ip_off + next->ip_len)
+    {
+        struct ipasfrag *t = next->ipf_next;
+        ip_deq(next);
+        m_freem(dtom(next));
+
+        next = t;
+        if (t == (struct ipasfrag *)fp)
+            next = next->ipf_next;
+    }
+
+    // overlapped with the front of next, drop the front part of next fragment
+    if (next->ip_off < ip->ip_off + ip->ip_len
+        && next->ip_off + next->ip_len >= ip->ip_off + ip->ip_len)
+    {
+        m_adj(dtom(next), next->ip_off - ip->ip_off - ip->ip_len);
+        next->ip_len -= ip->ip_off + ip->ip_len - next->ip_off;
+    }
+
+insert:
+    ip_enq(ip, prev);
+    int ip_data_len = 0;
+    for (next = fp->ipq_next; next != (struct ipasfrag *)fp; next = next->ipf_next)
+    {
+        ip_data_len += next->ip_len;
+        if (next->ipf_next == (struct ipasfrag *)fp
+            || next->ip_off + next->ip_len + 1 != next->ipf_next->ip_off)
+            return NULL;
+    }
+    if (next != (struct ipasfrag *)fp)
+        return NULL;
+    if (fp->ipq_prev->ipf_mff) // 最后一个分片的ipf_mff被置位，返回0 ????
+        return NULL;
+
+    prev = fp->ipq_next;
+    next = prev->ipf_next;
+    while (prev != (struct ipasfrag *)fp
+        && next != (struct ipasfrag *)fp)
+    {
+        m_cat(dtom(prev), dtom(next));
+        next = next->ipf_next;
+    }
+
+    struct ip *ip_header = (struct ip*)prev;
+    ip_header->ip_len = ip_data_len;
+    ip_header->ip_src.s_addr = fp->ipq_src.s_addr;
+    ip_header->ip_dst.s_addr = fp->ipq_dst.s_addr;
+    ip_header->ip_tos = ((struct ipasfrag *)fp)->ipf_mff & ~1;
+
+    remque(fp);
+    m_free(dtom(fp));
+
+    ip_header->ip_len += ip_header->ip_hl << 2;
+    dtom(ip_header)->m_len += ip_header->ip_hl << 2;
+    dtom(ip_header)->m_data -= ip_header->ip_hl << 2;
+    dtom(ip_header)->m_pkthdr.len = ip_header->ip_len;
+
+    return ip_header;
+
+dropfrag:
+    ipstat.ips_fragdropped++;
+    m_freem(m);
+
     return NULL;
 }
 
@@ -245,16 +388,30 @@ void
 ip_freef(fp)
 	struct ipq *fp;
 {
+    register struct ipasfrag *q, *p;
+
+    for (q = fp->ipq_next; q != (struct ipasfrag *)fp; q = p) {
+        p = q->ipf_next;
+        ip_deq(q);
+        m_freem(dtom(q));
+    }
+    remque(fp);
+    (void)m_free(dtom(fp));
 }
 
 /*
- * Put an ip fragment on a reassembly chain.
+ * Put an p fragment on a reassembly chain.
  * Like insque, but pointers in middle of structure.
  */
 void
 ip_enq(p, prev)
 	register struct ipasfrag *p, *prev;
 {
+    p->ipf_next = prev->ipf_next;
+    p->ipf_prev = prev;
+
+    prev->ipf_next->ipf_prev = p;
+    prev->ipf_next = p;
 }
 
 /*
@@ -264,26 +421,47 @@ void
 ip_deq(p)
 	register struct ipasfrag *p;
 {
+    p->ipf_prev->ipf_next = p->ipf_next;
+    p->ipf_next->ipf_prev = p->ipf_prev;
 }
 
 /*
- * IP timer processing;
+ * p timer processing;
  * if a timer expires on a reassembly
  * queue, discard it.
  */
 void
 ip_slowtimo()
 {
+    struct ipq *next = NULL;
+    struct ipq *now = NULL;
+    for (now = ipq.next, next = now->next;
+        now != &ipq;)
+    {
+        if (--now->ipq_ttl == 0)
+        {
+            ip_freef(now);
+            now = next;
+            continue;
+        }
 
+        now = next;
+        next = next->next;
+    }
 }
 
 /*
  * Drain off all datagram fragments.
+ * to release all memory occupaid by IP
  */
 void
 ip_drain()
 {
-
+    while (ipq.next != &ipq)
+    {
+        ipstat.ips_fragdropped++;
+        ip_freef(ipq.next);
+    }
 }
 
 /*
@@ -429,7 +607,7 @@ ip_dooptions(m)
                     }
 
                     // 如果本地地址不在路由中，则上一个系统把分组发送到错误的主机了
-                    // 对宽松路由来说，这不是错误，仅意味着ip必须把分组转到到目的地
+                    // 对宽松路由来说，这不是错误，仅意味着p必须把分组转到到目的地
                     break;
                 }
 
@@ -586,7 +764,7 @@ ip_srcroute()
 }
 
 /*
- * Strip out IP options, at higher
+ * Strip out p options, at higher
  * level protocol in the kernel.
  * Second argument is buffer to which options
  * will be moved, and return value is their length.
@@ -692,7 +870,7 @@ ip_forward(m, srcrt)
         && ipsendredirects && !srcrt)
     {
         //if the subnet mask bits of the source address and the outgoing interface's
-        //address are the same, the addressed are on the same IP network
+        //address are the same, the addressed are on the same p network
         if ((ip->ip_src.s_addr & ((struct in_ifaddr*)ipforward_rt.ro_rt->rt_ifa)->ia_subnetmask)
             == ((struct in_ifaddr*)ipforward_rt.ro_rt->rt_ifa)->ia_net)
         {

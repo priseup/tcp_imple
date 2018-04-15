@@ -174,7 +174,7 @@ ip_output(m0, opt, ro, flags, imo)
                 
                 struct ip *frag_ip = mtod(n, struct ip*);
                 frag_ip->ip_hl = (sizeof (struct ip) + optlen) >> 2;
-                frag_ip->ip_off = (mnext - hlen) / 8 + ip->ip_off; // ip可能也是一个被frag的分组
+                frag_ip->ip_off = (mnext - hlen) / 8 + ip->ip_off & IP_OFFMASK; // ip可能也是一个被frag的分组
                 frag_ip->ip_off &= ~IP_DF;
 
                 if (ip->ip_off & IP_MF)

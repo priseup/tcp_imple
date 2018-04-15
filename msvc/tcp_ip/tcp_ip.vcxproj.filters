@@ -79,6 +79,21 @@
     <Filter Include="Source Files\hp300\hp300">
       <UniqueIdentifier>{a05dfc20-d37c-495a-9d40-3a477d151845}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\i386">
+      <UniqueIdentifier>{cdc579f0-29fd-4fab-b749-2d7aea3ca191}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\i386\i386">
+      <UniqueIdentifier>{40da1364-1ec7-4a18-8ad1-d12f64d9b4f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\i386">
+      <UniqueIdentifier>{ef5175ff-2826-4f63-9f4a-5dc0359600d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\i386\isa">
+      <UniqueIdentifier>{9ec2dd59-c245-41da-8a4b-04941f1accb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\i386\i386">
+      <UniqueIdentifier>{d570e94a-ad26-457a-8f6b-a9adeb3d96be}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\net\bpf.h">
@@ -336,6 +351,12 @@
     <ClInclude Include="..\..\sys\queue.h">
       <Filter>Header Files\sys</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\i386\isa\rtc.h">
+      <Filter>Header Files\i386\isa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\i386\i386\cons.h">
+      <Filter>Header Files\i386\i386</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\net\bpf.c">
@@ -448,6 +469,9 @@
     </ClCompile>
     <ClCompile Include="..\..\hp300\hp300\in_cksum.c">
       <Filter>Source Files\hp300\hp300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\i386\i386\machdep.c">
+      <Filter>Source Files\i386\i386</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

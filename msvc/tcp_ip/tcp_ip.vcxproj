@@ -88,6 +88,7 @@
       <AdditionalOptions>/H 100 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalIncludeDirectories>..\..\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies />
@@ -120,6 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_DEPRECATE</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -140,6 +142,8 @@
     <ClInclude Include="..\..\hp300\include\proc.h" />
     <ClInclude Include="..\..\hp300\include\psl.h" />
     <ClInclude Include="..\..\hp\iotypes.h" />
+    <ClInclude Include="..\..\i386\i386\cons.h" />
+    <ClInclude Include="..\..\i386\isa\rtc.h" />
     <ClInclude Include="..\..\netinet\icmp_var.h" />
     <ClInclude Include="..\..\netinet\if_ether.h" />
     <ClInclude Include="..\..\netinet\igmp.h" />
@@ -220,6 +224,7 @@
     <ClCompile Include="..\..\conf\param.c" />
     <ClCompile Include="..\..\hp300\dev\if_le.c" />
     <ClCompile Include="..\..\hp300\hp300\in_cksum.c" />
+    <ClCompile Include="..\..\i386\i386\machdep.c" />
     <ClCompile Include="..\..\kern\init_main.c" />
     <ClCompile Include="..\..\kern\kern_clock.c" />
     <ClCompile Include="..\..\kern\kern_sysctl.c" />
