@@ -33,7 +33,7 @@ struct	icmpstat {
 	{ "maskrepl", CTLTYPE_INT }, \
 }
 
-#ifdef KERNEL
+#ifndef KERNEL
 struct	icmpstat icmpstat;
 #endif
 
