@@ -11,6 +11,7 @@
 
 #include "../net/if.h"
 #include "../net/route.h"
+#include "hp300\include\endian.h"
 
 #include "in.h"
 #include "in_systm.h"
@@ -44,65 +45,85 @@ icmp_error(n, type, code, dest, destifp)
 	struct ifnet *destifp;
 {
     struct ip *oip = mtod(n, struct ip*);
-    int ioplen = oip->ip_len;
+    int oiplen = oip->ip_len;
+    int icmplen = 0;
+
+    if (type != ICMP_REDIRECT)
+        icmpstat.icps_error++;
 
     // 只给第一个数据报分片报错
     if ((oip->ip_off & IP_OFFMASK))   
     {
-        m_freem(n);
-        return;
+        goto freeit;
     }
 
-    if (oip->ip_p == IPPROTO_ICMP)
-    { 
+    if (oip->ip_p == IPPROTO_ICMP 
+        && type != ICMP_REDIRECT
+        && n->m_len >= oiplen + ICMP_MINLEN
+        && !ICMP_INFOTYPE(((struct icmp*)((caddr_t)oip + oiplen))->icmp_type))
+    {
+        icmpstat.icps_oldicmp++;
+        goto freeit;
     }
 
+    /* Don't send error in response to a multicast or broadcast packet */
     if (n->m_flags & (M_BCAST | M_MCAST))
     {
+        goto freeit;
     }
 
-    // 1. to ip multicast or broadcast
-    if (IN_MULTICAST(mtod(n, struct ip*)->ip_src.s_addr))
-        ;
-    if (INADDR_BROADCAST == mtod(n, struct ip*)->ip_src.s_addr)
-        ;
-    if (INADDR_ANY == mtod(n, struct ip*)->ip_src.s_addr
-        || IN_LOOPBACKNET == mtod(n, struct ip*)->ip_src.s_addr
-        || IN_EXPERIMENTAL(mtod(n, struct ip*)->ip_src.s_addr))
-        ;
-    // 2. ip_src is not a single cast (zero based address
-    //      loop address, broadcast, multicast, E)
-
-    struct mbuf *m = m_gethdr(0, MT_DATA);
-    MH_ALIGN(m, ICMP_MINLEN + oip->ip_hl << 2 + 8);
+    struct mbuf *m = m_gethdr(0, MT_HEADER);
+    if (!m)
+        goto freeit;
+    icmplen = oiplen + min(8, oip->ip_len);
+    m->m_len = icmplen + ICMP_MINLEN;
+    MH_ALIGN(m, m->m_len);
 
     struct icmp *icmp = mtod(m, struct icmp*);
+    icmpstat.icps_outhist[type]++;
     icmp->icmp_type = type;
+    if (type == ICMP_REDIRECT)
+        icmp->icmp_gwaddr.s_addr = dest;
+    else
+    {
+        icmp->icmp_void = 0;
+
+        if (type == ICMP_PARAMPROB)
+        {
+            icmp->icmp_pptr = code;
+            code = 0;
+        }
+        else if (type == ICMP_UNREACH
+            && code == ICMP_UNREACH_NEEDFRAG && destifp)
+        {
+            icmp->icmp_nextmtu = htons(destifp->if_mtu);
+        }
+    }
     icmp->icmp_code = code;
-    icmp->icmp_gwaddr.s_addr = 0;
-    icmp->icmp_pptr = 0;
-    icmp->icmp_nextmtu = 3;
-    m->m_len += sizeof(struct icmp);
 
-    memcpy(icmp+1, oip, oip->ip_hl << 2);
-    m->m_len += oip->ip_hl << 2;
+    memcpy(icmp->icmp_ip, oip, icmplen);
+    struct ip *nip = &icmp->icmp_ip;
+    nip->ip_len = htons((u_short)(nip->ip_len + oiplen));
     
-    int len = min(8, ioplen);
-    memcpy(mtod(m, caddr_t) + m->m_len, mtod(n, caddr_t) + (oip->ip_hl << 2), len);
-    m->m_len += len;
-
-    m->m_data = (caddr_t)icmp;
+    /*
+    * Now, copy old ip header (without options)
+    * in front of icmp message.
+    */
+    if (m->m_data - sizeof(struct ip) < m->m_pktdat)
+        printf("icmp len");
     m->m_data -= sizeof(struct ip);
     m->m_len += sizeof(struct ip);
-    memcpy(mtod(m, caddr_t), oip, sizeof (*oip));
-
-    struct ip *ip = mtod(m, struct ip *);
-    ip->ip_len = m->m_len;
-    ip->ip_hl = sizeof(*ip) >> 2;
-    ip->ip_p = IPPROTO_ICMP;
-    ip->ip_tos = 0;
-
+    m->m_pkthdr.len = m->m_len;
+    m->m_pkthdr.rcvif = n->m_pkthdr.rcvif;
+    nip = mtod(m, struct ip *);
+    memcpy((caddr_t)nip, (caddr_t)oip, sizeof(struct ip));
+    nip->ip_len = m->m_len;
+    nip->ip_hl = sizeof(struct ip) >> 2;
+    nip->ip_p = IPPROTO_ICMP;
+    nip->ip_tos = 0;
     icmp_reflect(m);
+
+freeit:
     m_freem(n);
 }
 
@@ -123,27 +144,32 @@ icmp_input(m, hlen)
     struct ip *ip = mtod(m, struct ip*);
     int icmplen = ip->ip_len;
     struct icmp *icmp = NULL;
+    void(*ctlfunc) (int, struct sockaddr *, struct ip*);
 
     if (icmplen < ICMP_MINLEN)
     {
         icmpstat.icps_tooshort++;
-        m_freem(m);
 
-        return;
+        goto freeit;
     }
-    if (m->m_len < sizeof (struct ip) + ICMP_MINLEN
-        && !m_pullup(m, sizeof(struct ip) + ICMP_MINLEN))
+    int i = hlen + min(icmplen, ICMP_ADVLENMIN);
+    if (m->m_len < i && !m_pullup(m, i))
     {
-        m_freem(m);
+        icmpstat.icps_tooshort++;
         return;
     }
     icmp = (struct icmp *)(mtod(m, caddr_t) + hlen);
-    icmp->icmp_cksum = 0;
-    icmp->icmp_cksum = in_cksum(icmp, icmplen);
-    struct ifaddr *a = NULL;
-    int type = icmp->icmp_type;
+    if (in_cksum(icmp, icmplen))
+    {
+        icmpstat.icps_checksum++;
+        goto freeit;
+    }
+    if (icmp->icmp_type > ICMP_MAXTYPE)
+        goto raw;
+    icmpstat.icps_inhist[icmp->icmp_type]++;
+    struct in_ifaddr *a = NULL;
     int code = icmp->icmp_code;
-    switch (type)
+    switch (icmp->icmp_type)
     {
     case ICMP_UNREACH:
         switch (code)
@@ -154,27 +180,25 @@ icmp_input(m, hlen)
         case ICMP_UNREACH_PORT:
         case ICMP_UNREACH_SRCFAIL:
             code += PRC_UNREACH_NET;
-            goto deliver;
+            break;
         case ICMP_UNREACH_NEEDFRAG:
             code += PRC_MSGSIZE;
-            goto deliver;
+            break;
         case ICMP_UNREACH_NET_UNKNOWN:
         case ICMP_UNREACH_NET_PROHIB:
         case ICMP_UNREACH_TOSNET:
             code = PRC_REDIRECT_NET;
-            goto deliver;
+            break;
         case ICMP_UNREACH_HOST_UNKNOWN:
         case ICMP_UNREACH_ISOLATED:
         case ICMP_UNREACH_HOST_PROHIB:
         case ICMP_UNREACH_TOSHOST:
             code = PRC_UNREACH_HOST;
-            goto deliver;
+            break;
         default:
-            icmpstat.icps_badcode++;
             goto badcode;
         }
-
-        inetsw[ip_protox[ip->ip_p]].pr_ctlinput(code, icmpsrc, icmp);
+        goto deliver;
 
     case ICMP_TIMXCEED:
         if (code > 1)
@@ -192,14 +216,32 @@ icmp_input(m, hlen)
             goto badcode;
         code = PRC_QUENCH;
     deliver:
-        ;//        if ()
+        if (icmplen < ICMP_ADVLENMIN
+            || icmplen < ICMP_ADVLEN(icmp)
+            || icmp->icmp_ip.ip_hl < (sizeof(struct ip) >> 2))
+        {
+            icmpstat.icps_badlen;
+            goto freeit;
+        }
+        NTOHS(icmp->icmp_ip.ip_len);
+        icmpsrc.sin_addr = icmp->icmp_ip.ip_dst;
+        if (ctlfunc = inetsw[ip_protox[ip->ip_p]].pr_ctlinput)
+            (*ctlfunc)(code, (struct sockaddr *)&icmpsrc, &icmp->icmp_ip);
+        break;
+
     badcode:
         icmpstat.icps_badcode++;
         break;
+
     case ICMP_ECHO:
         icmp->icmp_type = ICMP_ECHOREPLY;
         goto reflect;
     case ICMP_TSTAMP:
+        if (icmplen < ICMP_TSLEN)
+        {
+            icmpstat.icps_badlen++;
+            break;
+        }
         icmp->icmp_type = ICMP_TSTAMPREPLY;
         icmp->icmp_code = 0;
         icmp->icmp_rtime = iptime();
@@ -207,31 +249,50 @@ icmp_input(m, hlen)
         goto reflect;
     case ICMP_MASKREQ:
         if (!icmpmaskrepl)
-            goto raw;
+            break;
         if (icmplen < ICMP_MASKLEN)
-            goto raw;
-
-        if (icmp->icmp_mask == 0
-            || icmp->icmp_mask == 255)
+            break;
+        switch (ip->ip_dst.s_addr)
+        {
+        case INADDR_BROADCAST:
+        case INADDR_ANY:
             icmpdst.sin_addr = ip->ip_src;
-        a = ifaof_ifpforaddr(&icmpdst, m->m_pkthdr.rcvif);
+            break;
+        default:
+            icmpdst.sin_addr = ip->ip_dst;
+        }
+
+        a = (struct in_ifaddr *)ifaof_ifpforaddr((struct sockaddr *)&icmpdst, m->m_pkthdr.rcvif);
+        if (a == 0)
+            break;
         icmp->icmp_type = ICMP_MASKREPLY;
-        icmp->icmp_mask = ((struct in_ifaddr*)a)->ia_sockmask.sin_addr.s_addr;
+        icmp->icmp_mask = a->ia_sockmask.sin_addr.s_addr;
 
         if (ip->ip_src.s_addr = 0)
         {
-            if (m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST)
-                ip->ip_src = ((struct in_ifaddr*)a)->ia_broadaddr.sin_addr;
-            if (m->m_pkthdr.rcvif->if_flags & IFF_POINTOPOINT)
-                ip->ip_src = ((struct in_ifaddr*)a)->ia_dstaddr.sin_addr;
+            if (a->ia_ifp->if_flags & IFF_BROADCAST)
+                ip->ip_src = a->ia_broadaddr.sin_addr;
+            if (a->ia_ifp->if_flags & IFF_POINTOPOINT)
+                ip->ip_src = a->ia_dstaddr.sin_addr;
         }
+    reflect:
+        ip->ip_len += hlen;
+        icmpstat.icps_reflect++;
+        icmpstat.icps_outhist[icmp->icmp_type]++;
+        icmp_reflect(m);
+        return;
     case ICMP_IREQ:
         break;
     case ICMP_REDIRECT:
         if (code > 3)
             goto badcode;
-        if (icmplen < ICMP_ADVLENMIN)
+        if (icmplen < ICMP_ADVLENMIN
+            || icmplen < ICMP_ADVLEN(icmp)
+            || icmp->icmp_ip.ip_hl < (sizeof(struct ip) >> 2))
+        {
+            icmpstat.icps_badlen++;
             break;
+        }
         icmpgw.sin_addr = ip->ip_src;
         icmpdst.sin_addr = icmp->icmp_gwaddr;
         icmpsrc.sin_addr = icmp->icmp_ip.ip_dst;
@@ -243,7 +304,7 @@ icmp_input(m, hlen)
             (struct sockaddr *)&icmpgw,
             (struct rtentry **)0);
         pfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
-
+        break;
     case ICMP_ECHOREPLY:
     case ICMP_ROUTERADVERT:
     case ICMP_ROUTERSOLICIT:
@@ -251,19 +312,15 @@ icmp_input(m, hlen)
     case ICMP_IREQREPLY:
     case ICMP_MASKREPLY:
     default:
-        goto raw;
-
+        break;
     }
-reflect:
-ip->ip_len += hlen;
-icmpstat.icps_reflect++;
-icmpstat.icps_outhist[type];
-icmp_reflect(m);
-return;
 
 raw:
     rip_input(m);
     return;
+
+freeit:
+    m_freem(m);
 }
 
 /*
@@ -277,19 +334,39 @@ icmp_reflect(m)
     struct in_addr t = ip->ip_dst;
     ip->ip_dst = ip->ip_src;
     struct in_ifaddr *ia = NULL;
+    struct mbuf *srcroute = NULL;
+    int optlen = 0;
+    if (!in_canforward(ip->ip_src)
+        && (ntohl(ip->ip_src.s_addr) & IN_CLASSA_NET)
+        != (IN_LOOPBACKNET << IN_CLASSA_NSHIFT))
+    {
+        m_freem(m);
+        goto done;
+    }
 
+    /*
+    * If the incoming packet was addressed directly to us,
+    * use dst as the src for the reply.  Otherwise (broadcast
+    * or anonymous), use the address which corresponds
+    * to the incoming interface.
+    */
     for (ia = in_ifaddr; ia; ia = ia->ia_next)
     {
         if (ia->ia_addr.sin_addr.s_addr == t.s_addr)
             break;
-        if (ia->ia_broadaddr.sin_addr.s_addr == t.s_addr)
+        if ((ia->ia_ifp->if_flags & IFF_BROADCAST) &&
+            ia->ia_broadaddr.sin_addr.s_addr == t.s_addr)
             break;
     }
+    icmpdst.sin_addr = t;
 
     // 如果没有匹配，
     // 就选择正在接收的接口的in_ifaddr结构
     // 或者in_ifaddr中的第一个地址(如果该接口没有被配置成IP可用的)
     // m->m_pkthdr.rcvif->if_addrlist->ifa_addr
+    if (!ia)
+        ia = (struct in_ifaddr *)ifaof_ifpforaddr(
+        (struct sockaddr *)&icmpdst, m->m_pkthdr.rcvif);
     if (!ia)
         ia = in_ifaddr;
 
@@ -298,13 +375,17 @@ icmp_reflect(m)
 
     if (ip->ip_hl << 2 > sizeof(*ip))
     {
-        int count = ip->ip_hl << 2 - sizeof(*ip);
+        optlen = ip->ip_hl << 2 - sizeof(*ip);
         char *cp = (char*)(ip + 1);
-        struct mbuf *srcroute = ip_srcroute();
+        srcroute = ip_srcroute();
         if (srcroute == NULL)
-            srcroute = m_get(0, MT_DATA);
+        {
+            srcroute = m_gethdr(0, MT_HEADER);
+            mtod(srcroute, struct in_addr*)->s_addr = 0;
+        }
+
         int len = 0;
-        for (count; count > 0; count -= len, cp += len)
+        for (optlen; optlen > 0; optlen -= len, cp += len)
         {
             if (cp[IPOPT_OPTVAL] = IPOPT_EOL)
             {
@@ -324,15 +405,37 @@ icmp_reflect(m)
             {
             case IPOPT_RR:
             case IPOPT_TS:
+            case IPOPT_SECURITY:
+                len = cp[IPOPT_OLEN];
                 memcpy(mtod(srcroute, caddr_t) + srcroute->m_len,
-                    cp + cp[IPOPT_OFFSET] - 1,
-                    cp[IPOPT_OLEN]);
-                srcroute->m_len += cp[IPOPT_OLEN];
+                    cp, len);
+                srcroute->m_len += len;
             }
         }
+
+        while (srcroute->m_len % 4)
+        {
+            *(mtod(srcroute, caddr_t) + srcroute->m_len)
+                = IPOPT_EOL;
+            srcroute->m_len++;
+        }
+
+        optlen = ip->ip_hl << 2 - sizeof(*ip);
+        ip->ip_len -= optlen;
+        ip->ip_hl = sizeof(struct ip) >> 2;
+        m->m_len -= optlen;
+
+        if (m->m_flags & M_PKTHDR)
+            m->m_pkthdr.len -= optlen;
+
+        memmove(ip + 1, ip + optlen + sizeof(struct ip), m->m_len - sizeof(struct ip));
     }
 
-    //icmp_send(m, srcroute);
+    m->m_flags &= ~(M_BCAST | M_MCAST);
+    icmp_send(m, srcroute);
+done:
+    if (srcroute)
+        m_free(srcroute);
 }
 
 /*
