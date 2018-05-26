@@ -18,6 +18,8 @@ u_char	etherbroadcastaddr[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 extern	struct ifnet loif;
 #define senderr(e) { error = (e); goto bad;}
 
+u_char	ether_ipmulticast_min[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x00};
+u_char	ether_ipmulticast_max[6] = {0x01, 0x00, 0x5e, 0x7f, 0xff, 0xff};
 /*
  * Ethernet output routine.
  * Encapsulate a packet of type family for the local net.
@@ -234,8 +236,6 @@ ether_ifattach(struct ifnet *ifp)
     }
 }
 
-u_char	ether_ipmulticast_min[6] = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x00 };
-u_char	ether_ipmulticast_max[6] = { 0x01, 0x00, 0x5e, 0x7f, 0xff, 0xff };
 /*
  * Add an Ethernet multicast address or range of addresses to the list for a
  * given interface.

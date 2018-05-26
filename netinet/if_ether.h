@@ -87,8 +87,8 @@ struct sockaddr_inarp {
 #define RTF_ANNOUNCE	RTF_PROTO2	/* announce new arp entry */
 
 extern u_char	etherbroadcastaddr[6];
-u_char	ether_ipmulticast_min[6];
-u_char	ether_ipmulticast_max[6];
+extern u_char	ether_ipmulticast_min[6];
+extern u_char	ether_ipmulticast_max[6];
 struct	ifqueue arpintrq;
 
 struct	llinfo_arp *arptnew(struct in_addr *);
