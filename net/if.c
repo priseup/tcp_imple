@@ -126,7 +126,7 @@ int ifioctl(struct socket *so, int cmd,
 {
     struct ifreq *ifrp = NULL;
     struct ifnet *ifp = NULL;
-
+    int error = 0;
     if (cmd == SIOCGIFCONF)
         return ifconf(cmd, data);
 
@@ -154,6 +154,13 @@ int ifioctl(struct socket *so, int cmd,
     case SIOCSIFMETRIC:
         ifp->if_metric = ifrp->ifr_metric;
         break;
+    case SIOCADDMULTI:
+    case SIOCDELMULTI:
+        if (error = suser(p->p_cred, &p->p_acflag))
+            return error;
+        if (ifp->if_ioctl == NULL)
+            return EOPNOTSUPP;
+        return (ifp->if_ioctl)(ifp, cmd, data);
     default:
         if (so->so_proto == 0)
             return EOPNOTSUPP;

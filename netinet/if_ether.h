@@ -28,6 +28,25 @@ struct ether_header
 #define	ETHERMTU	1500
 #define	ETHERMIN	(60-14)
 
+//#ifdef KERNEL
+ /*
+ * Macro to map an IP multicast address to an Ethernet multicast address.
+ * The high-order 25 bits of the Ethernet address are statically assigned,
+ * and the low-order 23 bits are taken from the low end of the IP address.
+ */
+#define ETHER_MAP_IP_MULTICAST(ipaddr, enaddr) \
+	/* struct in_addr *ipaddr; */ \
+	/* u_char enaddr[6];	   */ \
+{ \
+	(enaddr)[0] = 0x01; \
+	(enaddr)[1] = 0x00; \
+	(enaddr)[2] = 0x5e; \
+	(enaddr)[3] = ((u_char *)ipaddr)[1] & 0x7f; \
+	(enaddr)[4] = ((u_char *)ipaddr)[2]; \
+	(enaddr)[5] = ((u_char *)ipaddr)[3]; \
+}
+//#endif
+
 /*
  * Ethernet Address Resolution Protocol.
  *
@@ -141,8 +160,8 @@ struct ether_multistep {
 { \
 	for ((enm) = (ac)->ac_multiaddrs; \
 	    (enm) != NULL && \
-	    (bcmp((enm)->enm_addrlo, (addrlo), 6) != 0 || \
-	     bcmp((enm)->enm_addrhi, (addrhi), 6) != 0); \
+	    (memcmp((enm)->enm_addrlo, (addrlo), 6) != 0 || \
+	     memcmp((enm)->enm_addrhi, (addrhi), 6) != 0); \
 		(enm) = (enm)->enm_next); \
 }
 

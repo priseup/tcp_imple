@@ -245,7 +245,79 @@ ether_addmulti(ifr, ac)
 	struct ifreq *ifr;
 	register struct arpcom *ac;
 {
-    return 0;
+        register struct ether_multi *enm;
+        struct sockaddr_in *sin;
+        u_char addrlo[6];
+        u_char addrhi[6];
+
+        switch (ifr->ifr_addr.sa_family) {
+
+        case AF_UNSPEC:
+            memcpy(addrlo, ifr->ifr_addr.sa_data, 6);
+            memcpy(addrhi, addrlo, 6);
+            break;
+
+#ifndef INET
+        case AF_INET:
+            sin = (struct sockaddr_in *)&(ifr->ifr_addr);
+            if (sin->sin_addr.s_addr == INADDR_ANY) {
+                /*
+                * An IP address of INADDR_ANY means listen to all
+                * of the Ethernet multicast addresses used for IP.
+                * (This is for the sake of IP multicast routers.)
+                */
+                memcpy(addrlo, ether_ipmulticast_min, 6);
+                memcpy(addrhi, ether_ipmulticast_max, 6);
+            }
+            else {
+                ETHER_MAP_IP_MULTICAST(&sin->sin_addr, addrlo);
+                memcpy(addrhi, addrlo, 6);
+            }
+            break;
+#endif
+
+        default:
+            return (EAFNOSUPPORT);
+        }
+
+        /*
+        * Verify that we have valid Ethernet multicast addresses.
+        */
+        if ((addrlo[0] & 0x01) != 1 || (addrhi[0] & 0x01) != 1) {
+            return (EINVAL);
+        }
+        /*
+        * See if the address range is already in the list.
+        */
+        ETHER_LOOKUP_MULTI(addrlo, addrhi, ac, enm);
+        if (enm != NULL) {
+            /*
+            * Found it; just increment the reference count.
+            */
+            ++enm->enm_refcount;
+            return (0);
+        }
+        /*
+        * New address or range; malloc a new multicast record
+        * and link it into the interface's multicast list.
+        */
+        enm = (struct ether_multi *)malloc(sizeof(*enm));
+        if (enm == NULL) {
+            return (ENOBUFS);
+        }
+        memcpy(enm->enm_addrlo, addrlo, 6);
+        memcpy(enm->enm_addrhi, addrhi, 6);
+        enm->enm_ac = ac;
+        enm->enm_refcount = 1;
+        enm->enm_next = ac->ac_multiaddrs;
+        ac->ac_multiaddrs = enm;
+        ac->ac_multicnt++;
+        /*
+        * Return ENETRESET to inform the driver that the list has changed
+        * and its reception filter should be adjusted accordingly.
+        */
+        return (ENETRESET);
+
 }
 
 /*
@@ -256,5 +328,69 @@ ether_delmulti(ifr, ac)
 	struct ifreq *ifr;
 	register struct arpcom *ac;
 {
-    return 0;
+        register struct ether_multi *enm;
+        register struct ether_multi **p;
+        struct sockaddr_in *sin;
+        u_char addrlo[6];
+        u_char addrhi[6];
+
+        switch (ifr->ifr_addr.sa_family) {
+
+        case AF_UNSPEC:
+            memcpy(addrlo, ifr->ifr_addr.sa_data, 6);
+            memcpy(addrhi, addrlo, 6);
+            break;
+
+#ifndef INET
+        case AF_INET:
+            sin = (struct sockaddr_in *)&(ifr->ifr_addr);
+            if (sin->sin_addr.s_addr == INADDR_ANY) {
+                /*
+                * An IP address of INADDR_ANY means stop listening
+                * to the range of Ethernet multicast addresses used
+                * for IP.
+                */
+                memcpy(addrlo, ether_ipmulticast_min, 6);
+                memcpy(addrhi, ether_ipmulticast_max, 6);
+            }
+            else {
+                ETHER_MAP_IP_MULTICAST(&sin->sin_addr, addrlo);
+                memcpy(addrhi, addrlo, 6);
+            }
+            break;
+#endif
+
+        default:
+            return (EAFNOSUPPORT);
+        }
+
+        /*
+        * Look up the address in our list.
+        */
+        ETHER_LOOKUP_MULTI(addrlo, addrhi, ac, enm);
+        if (enm == NULL) {
+            return (ENXIO);
+        }
+        if (--enm->enm_refcount != 0) {
+            /*
+            * Still some claims to this record.
+            */
+            return (0);
+        }
+        /*
+        * No remaining claims to this record; unlink and free it.
+        */
+        for (p = &enm->enm_ac->ac_multiaddrs;
+            *p != enm;
+            p = &(*p)->enm_next)
+            continue;
+        *p = (*p)->enm_next;
+        free(enm);
+        ac->ac_multicnt--;
+        /*
+        * Return ENETRESET to inform the driver that the list has changed
+        * and its reception filter should be adjusted accordingly.
+        */
+        return (ENETRESET);
+
 }

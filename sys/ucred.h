@@ -19,11 +19,11 @@ struct ucred {
 #define NOCRED ((struct ucred *)-1)	/* no credential available */
 #define FSCRED ((struct ucred *)-2)	/* filesystem credential */
 
-#ifdef KERNEL
+//#ifdef KERNEL
 #define	crhold(cr)	(cr)->cr_ref++
 struct ucred *crget();
 struct ucred *crcopy();
 struct ucred *crdup();
-#endif /* KERNEL */
+//#endif /* KERNEL */
 
 #endif /* !SYS_UCRED_H_ */

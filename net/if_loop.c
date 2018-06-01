@@ -46,6 +46,23 @@ int loioctl(struct ifnet *ifp, int cmd, caddr_t data)
 
         // everything else is done at a higher level.
         break;
+    case SIOCADDMULTI:
+    case SIOCDELMULTI:
+        ifr = (struct ifreq *)data;
+        if (ifr == 0)
+        {
+            error = EAFNOSUPPORT;
+            break;
+        }
+        switch (ifr->ifr_addr.sa_family)
+        {
+        case AF_INET:
+            break;
+        default:
+            error = EAFNOSUPPORT;
+            break;
+        }
+        break;
     default:
         error = EINVAL;
         break;

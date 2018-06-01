@@ -209,6 +209,17 @@ int leioctl(struct ifnet *ifp, int cmd, caddr_t data)
             lestart(ifp);
         }
         break;
+    case SIOCADDMULTI:
+    case SIOCDELMULTI:
+        error = (cmd == SIOCADDMULTI) ?
+            ether_addmulti((struct ifreq *)data, &le->sc_ac) :
+            ether_delmulti((struct ifreq *)data, &le->sc_ac);
+        if (error == ENETRESET)
+        {
+            lereset(ifp->if_unit);
+            error = 0;
+        }
+        break;
     default:
         error = EINVAL;
         break;

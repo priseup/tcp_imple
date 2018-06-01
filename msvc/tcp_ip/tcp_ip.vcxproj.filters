@@ -357,6 +357,12 @@
     <ClInclude Include="..\..\i386\i386\cons.h">
       <Filter>Header Files\i386\i386</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\sys\times.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\acct.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\net\bpf.c">
@@ -472,6 +478,9 @@
     </ClCompile>
     <ClCompile Include="..\..\i386\i386\machdep.c">
       <Filter>Source Files\i386\i386</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\kern_prot.c">
+      <Filter>Source Files\kern</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

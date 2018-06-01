@@ -178,6 +178,7 @@
     <ClInclude Include="..\..\net\route.h" />
     <ClInclude Include="..\..\net\slcompress.h" />
     <ClInclude Include="..\..\net\slip.h" />
+    <ClInclude Include="..\..\sys\acct.h" />
     <ClInclude Include="..\..\sys\buf.h" />
     <ClInclude Include="..\..\sys\callout.h" />
     <ClInclude Include="..\..\sys\cdefs.h" />
@@ -211,6 +212,7 @@
     <ClInclude Include="..\..\sys\systm.h" />
     <ClInclude Include="..\..\sys\termios.h" />
     <ClInclude Include="..\..\sys\time.h" />
+    <ClInclude Include="..\..\sys\times.h" />
     <ClInclude Include="..\..\sys\tty.h" />
     <ClInclude Include="..\..\sys\ttycom.h" />
     <ClInclude Include="..\..\sys\ttydefaults.h" />
@@ -227,6 +229,7 @@
     <ClCompile Include="..\..\i386\i386\machdep.c" />
     <ClCompile Include="..\..\kern\init_main.c" />
     <ClCompile Include="..\..\kern\kern_clock.c" />
+    <ClCompile Include="..\..\kern\kern_prot.c" />
     <ClCompile Include="..\..\kern\kern_sysctl.c" />
     <ClCompile Include="..\..\kern\tty.c" />
     <ClCompile Include="..\..\kern\tty_subr.c" />
