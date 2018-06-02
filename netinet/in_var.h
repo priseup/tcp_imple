@@ -159,7 +159,7 @@ struct in_multistep {
 { \
 	(step).i_ia = in_ifaddr; \
 	(step).i_inm = NULL; \
-	IN_NEXT_MULTI((step), (inm); \
+	IN_NEXT_MULTI((step), (inm)); \
 }
 
 int	in_ifinit(struct ifnet *,

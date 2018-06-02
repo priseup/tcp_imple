@@ -23,7 +23,7 @@ struct igmpstat {
 	u_long	igps_snd_reports;	/* sent membership reports */
 };
 
-#ifdef KERNEL
+#ifndef KERNEL
 struct igmpstat igmpstat;
 
 /*
