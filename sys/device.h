@@ -1,6 +1,9 @@
 #ifndef SYS_DEVICE_H
 #define SYS_DEVICE_H
 
+#include <sys/types.h>
+#include <stdlib.h>
+
 /*
  * Minimal device structures.
  * Note that all ``system'' device types are listed here.
@@ -31,7 +34,7 @@ struct evcnt {
 	char	ev_name[8];		/* what to call them (systat display) */
 };
 
-typedef int (*cfmatch_t)(struct device *, struct cfdata *, void *));
+typedef int (*cfmatch_t)(struct device *, struct cfdata *, void *);
 
 /*
  * `configuration' driver (what the machine-independent autoconf uses).
@@ -45,7 +48,7 @@ struct cfdriver {
 	void	**cd_devs;		/* devices found */
 	char	*cd_name;		/* device name */
 	cfmatch_t cd_match;		/* returns a match level */
-	void	(*cd_attach)(struct device *, struct device *, void *));
+	void	(*cd_attach)(struct device *, struct device *, void *);
 	enum	devclass cd_class;	/* device classification */
 	size_t	cd_devsize;		/* size of dev data (for malloc) */
 	void	*cd_aux;		/* additional driver, if any */
@@ -89,12 +92,12 @@ struct pdevinit {
 
 struct	device *alldevs;	/* head of list of all devices */
 struct	evcnt *allevents;	/* head of list of all events */
-
-struct cfdata *config_search(cfmatch_t, struct device *, void *);
-struct cfdata *config_rootsearch(cfmatch_t, char *, void *);
-int config_found(struct device *, void *, cfprint_t);
-int config_rootfound(char *, void *);
-void config_attach(struct device *, struct cfdata *, void *, cfprint_t);
-void evcnt_attach(struct device *, const char *, struct evcnt *);
+//
+//struct cfdata *config_search(cfmatch_t, struct device *, void *);
+//struct cfdata *config_rootsearch(cfmatch_t, char *, void *);
+//int config_found(struct device *, void *, cfprint_t);
+//int config_rootfound(char *, void *);
+//void config_attach(struct device *, struct cfdata *, void *, cfprint_t);
+//void evcnt_attach(struct device *, const char *, struct evcnt *);
 
 #endif  // SYS_DEVICE_H

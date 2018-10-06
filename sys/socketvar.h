@@ -141,7 +141,7 @@ struct socket {
  */
 #define sblock(sb, wf) ((sb)->sb_flags & SB_LOCK ? \
 		(((wf) == M_WAITOK) ? sb_lock(sb) : EWOULDBLOCK) : \
-		((sb)->sb_flags |= SB_LOCK), 0)
+		((sb)->sb_flags |= SB_LOCK, 0)
 
 /* release lock on sockbuf sb */
 #define	sbunlock(sb) { \

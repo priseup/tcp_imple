@@ -41,7 +41,6 @@
 /*
  * Older BSDs don't have kernel malloc.
  */
-extern bcopy();
 static caddr_t bpf_alloc();
 
 #define BPF_BUFSIZE 4096

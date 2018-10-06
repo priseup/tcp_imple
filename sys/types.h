@@ -3,6 +3,8 @@
 
 typedef	unsigned long long u_quad_t;	/* quads */
 
+#define	WCOREFLAG	0200
+
 #ifdef  _WIN64
 typedef	long	quad_t;
 typedef unsigned short ino_t;
@@ -36,6 +38,11 @@ typedef unsigned long u_long;
 typedef long mytime_t;
 
 #define	__P(protos)	protos		/* traditional C preprocessor */
+
+
+typedef	unsigned long	vm_offset_t;
+typedef	unsigned long	vm_size_t;
+
 
 /*
  * Forward structure declarations for function prototypes.  We include the
@@ -89,6 +96,25 @@ struct	uio;
 #define	minor(x)	((int)((x)&0xff))		/* minor number */
 #define	makedev(x,y)	((dev_t)(((x)<<8) | (y)))	/* create dev_t */
 #endif
+
+// just to substiute, simplify the code
+#define bcopy(src, dst, size) memcpy((dst), (src), (size))
+#define bzero(src, size) memset((src), 0, (size))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define panic printf 
+
+#define splsoftclock()	0
+#define splnet()	0
+#define splbio()	0
+#define splimp()	0
+#define spltty()	0
+#define splclock()	0
+#define splstatclock()	0
+#define splvm()		0
+#define splhigh()	0
+#define splsched()	0
+#define splx(s)     0
 
 //#include <machine/ansi.h>
 //#include <machine/types.h>

@@ -33,16 +33,17 @@ int	hz = HZ;
 int	tick = 1000000 / HZ;
 int	tickadj = 30000 / (60 * HZ);		/* can adjust 30ms in 60s */
 //struct	timezone tz = { TIMEZONE, DST };
-//#define	NPROC (20 + 16 * MAXUSERS)
+#define MAXUSERS 5 // cannot find it in bsd source code, so define it myself
+#define	NPROC (20 + 16 * MAXUSERS)
 //int	maxproc = NPROC;
 //#define	NTEXT (80 + NPROC / 8)			/* actually the object cache */
 //#define	NVNODE (NPROC + NTEXT + 100)
 //int	desiredvnodes = NVNODE;
-//int	maxfiles = 3 * (NPROC + MAXUSERS) + 80;
-//int	ncallout = 16 + NPROC;
-//int	nclist = 60 + 12 * MAXUSERS;
-int	nmbclusters = NMBCLUSTERS;
-int	fscale = FSCALE;	/* kernel uses `FSCALE', user uses `fscale' */
+int	maxfiles = 3 * (NPROC + MAXUSERS) + 80;
+int	ncallout = 16 + NPROC;
+int	nclist = 60 + 12 * MAXUSERS;
+//int	nmbclusters = NMBCLUSTERS;
+//int	fscale = FSCALE;	/* kernel uses `FSCALE', user uses `fscale' */
 
 /*
  * Values in support of System V compatible shared memory.	XXX

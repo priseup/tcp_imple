@@ -139,11 +139,11 @@
 #define	roundup(x, y)	((((x)+((y)-1))/(y))*(y))
 #define powerof2(x)	((((x)-1)&(x))==0)
 
-/* Macros for min/max. */
-#ifndef KERNEL
-#define	MIN(a,b) (((a)<(b))?(a):(b))
-#define	MAX(a,b) (((a)>(b))?(a):(b))
-#endif
+///* Macros for min/max. */
+//#ifndef KERNEL
+//#define	MIN(a,b) (((a)<(b))?(a):(b))
+//#define	MAX(a,b) (((a)>(b))?(a):(b))
+//#endif
 
 /*
  * Constants for setting the parameters of the kernel memory allocator.

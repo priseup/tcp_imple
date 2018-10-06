@@ -94,6 +94,9 @@
     <Filter Include="Header Files\i386\i386">
       <UniqueIdentifier>{d570e94a-ad26-457a-8f6b-a9adeb3d96be}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libkern">
+      <UniqueIdentifier>{c3cfa35b-e7c4-46c5-8ce3-3bca52d37fc6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\net\bpf.h">
@@ -363,6 +366,42 @@
     <ClInclude Include="..\..\sys\acct.h">
       <Filter>Header Files\sys</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\sys\filedesc.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\ktrace.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\vnode.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\signalvar.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\vmmeter.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\param.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\sys\conf.h">
+      <Filter>Header Files\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\hp\dev\device.h">
+      <Filter>Header Files\hp\dev</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\hp300\hp300\clockreg.h">
+      <Filter>Header Files\hp300\hp300</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\hp300\include\types.h">
+      <Filter>Header Files\hp300\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\hp\dev\hilreg.h">
+      <Filter>Header Files\hp300\dev</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\hp\dev\iotypes.h">
+      <Filter>Header Files\hp300\dev</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\net\bpf.c">
@@ -481,6 +520,45 @@
     </ClCompile>
     <ClCompile Include="..\..\kern\kern_prot.c">
       <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\uipc_syscalls.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\uipc_socket.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\init_sysent.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\sys_generic.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\sys_socket.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\kern_descrip.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\uipc_socket2.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\kern_synch.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\hp300\hp300\autoconf.c">
+      <Filter>Source Files\hp300\hp300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\kern\kern_sig.c">
+      <Filter>Source Files\kern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libkern\ffs.c">
+      <Filter>Source Files\libkern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\hp300\hp300\clock.c">
+      <Filter>Header Files\hp300\hp300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\hp300\hp300\machdep.c">
+      <Filter>Source Files\hp300\hp300</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

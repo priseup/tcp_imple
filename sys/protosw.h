@@ -173,7 +173,7 @@ char	*prcorequests[] = {
 };
 #endif
 
-#ifdef KERNEL
+#ifndef KERNEL
 extern	struct protosw *pffindproto(), *pffindtype();
 #endif
 
