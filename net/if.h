@@ -78,6 +78,16 @@ struct ifnet
     int(*if_reset)(int);
     int(*if_watchdog)(int);
 
+    // if_snd是接口输出分组队列，每个接口有它自己的ifnet结构
+    // 即它自己的输出队列
+    // ifq_head指向队列的第一个分组(下一个要输出的分组)
+    // ifq_tail指向队列最后一个分组
+    // if_len是当前队列中分组的数目
+    // ifq_maxlen是队列中允许的缓存最大个数
+    // 除非驱动程序修改它，这个最大值被设置为 5 0 (来源于全局整数 ifqmaxlen
+    // 它在编译期间根据IFQ_MAXLEN初始化而来)
+    // 队列作为一个mbuf链的链表来实现
+    // ifq_drops统计因为队列满而丢弃的分组数
 	struct ifqueue 
     {
 		struct	mbuf *ifq_head;

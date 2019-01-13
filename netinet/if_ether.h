@@ -118,7 +118,6 @@ void	arpintr(void);
 int	arpresolve(struct arpcom *,
 	   struct rtentry *, struct mbuf *, struct sockaddr *, u_char *);
 void	arp_rtrequest(int, struct rtentry *, struct sockaddr *);
-void	arpwhohas(struct arpcom *, struct in_addr *);
 
 int	ether_addmulti(struct ifreq *, struct arpcom *);
 int	ether_delmulti(struct ifreq *, struct arpcom *);
