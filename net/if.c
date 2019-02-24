@@ -245,6 +245,7 @@ void ifinit()
 
 void if_slowtimo(void *arg)
 {
+    extern int hz;
     struct ifnet *ifp = NULL;
 
     for (ifp = ifnet; ifp; ifp = ifp->if_next)
@@ -258,7 +259,7 @@ void if_slowtimo(void *arg)
             ifp->if_watchdog(ifp->if_unit);
     }
 
-    //timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);
+    timeout(if_slowtimo, (void*)0, hz/IFNET_SLOWHZ);
 }
 
 void if_freenameindex(struct if_nameindex *a)

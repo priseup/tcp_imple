@@ -101,7 +101,7 @@ icmp_error(n, type, code, dest, destifp)
     }
     icmp->icmp_code = code;
 
-    memcpy(icmp->icmp_ip, oip, icmplen);
+    memcpy((char*)(&icmp->icmp_ip), oip, icmplen);
     struct ip *nip = &icmp->icmp_ip;
     nip->ip_len = htons((u_short)(nip->ip_len + oiplen));
     

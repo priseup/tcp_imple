@@ -6,7 +6,7 @@
  */
 
 #include "../sys/param.h"
-// #include "../sys/systm.h"
+#include "../sys/systm.h"
 #include "../sys/malloc.h"
 #include "../sys/mbuf.h"
 #include "../sys/socket.h"
@@ -106,27 +106,38 @@ arp_rtrequest(req, rt, sa)
     static struct sockaddr_dl null_sdl = {sizeof (null_sdl), AF_LINK};
 
     struct arpcom *ac = NULL;
-    arptimer();
+    arptimer(NULL);
 
     if (rt->rt_flags & RTF_GATEWAY)
         return;
+    struct sockaddr_inarp iii;
 
     switch (req)
     {
     case RTM_ADD:
         // 网络路由，而非主机路由
-        if (!(rt->rt_flags & RTF_HOST))
+        if (!(rt->rt_flags & RTF_HOST) && rt->rt_genmask)
         {
-
+            rt->rt_flags |= RTF_CLONING;
         }
         if (rt->rt_flags & RTF_CLONING)
         {
             rt_setgate(rt, sa, &null_sdl);
+            SDL(rt->rt_gateway)->sdl_len = null_sdl.sdl_len;
+            SDL(rt->rt_gateway)->sdl_family = null_sdl.sdl_family;
+            SDL(rt->rt_gateway)->sdl_type = ac->ac_if.if_flags;
+            SDL(rt->rt_gateway)->sdl_index = ac->ac_if.if_index;
+            rt->rt_expire = time.tv_sec;
+        }
+        if (rt->rt_flags & RTF_ANNOUNCE)
+        {
+            iii.sin_other = SIN_PROXY;
+//            arprequest(rt->rt_ifp, (u_long*)(&rt->rt_ifp->ac_ipaddr), (u_long*)addr, ac->ac_enaddr);
         }
         break;
     case RTM_RESOLVE:
-        SDL(rt->rt_gateway)->sa_family = AF_INET;
-        SDL(rt->rt_gateway)->sa_len = 0;
+        SDL(rt->rt_gateway)->sdl_family = AF_INET;
+        SDL(rt->rt_gateway)->sdl_len = 0;
 
         if (!la)
             la = malloc(sizeof (*la));
@@ -138,9 +149,12 @@ arp_rtrequest(req, rt, sa)
         rt->rt_flags &= RTF_LLINFO;
         rt->rt_expire = 0;
 
+        insque(la, &llinfo_arp);
+
         memcpy(LLADDR(SDL(rt->rt_gateway)), ac->ac_enaddr, 6);
         SDL(rt->rt_gateway)->sdl_alen = 6;
 
+        int usrloopback = 0;
         if (usrloopback)
             rt->rt_ifp = &loif;
         break;
@@ -168,8 +182,8 @@ arpwhohas(ac, addr)
 	register struct arpcom *ac;
 	register struct in_addr *addr;
 {
-        //arprequest(ac, (u_long*)addr, (u_long*)addr, ac->ac_enaddr);
-        arprequest(ac, (u_long*)(&ac->ac_ipaddr), (u_long*)addr, ac->ac_enaddr);
+    //arprequest(ac, (u_long*)addr, (u_long*)addr, ac->ac_enaddr);
+    arprequest(ac, (u_long*)(&ac->ac_ipaddr), (u_long*)addr, ac->ac_enaddr);
 }
 
 /*
@@ -246,14 +260,13 @@ arpresolve(ac, rt, m, dst, desten)
 
     if (m->m_flags & M_BCAST)
     {
-        memcpy(desten, etherbroadcastaddr, 6);
+        memcpy(desten, etherbroadcastaddr, sizeof (etherbroadcastaddr));
         return 1;
     }
 
     if (m->m_flags & M_MCAST)
     {
-        // 将D类地址映射为相应的以太网地址
-        ETHER_MAP_IP_MULTICAST(etherbroadcastaddr, desten);
+        ETHER_MAP_IP_MULTICAST(&SIN(dst)->sin_addr, desten);
         return 1;
     }
 
@@ -264,40 +277,49 @@ arpresolve(ac, rt, m, dst, desten)
     else
     {
         la = arplookup(dst->sa_data, 1, 0);
-        rt = la->la_rt;
     }
     if (!la)
     {
         error = 0;
         return 0;
     }
-
-    la->la_hold = mbuf;
     rt = la->la_rt;
-    if ((rt->rt_expire == 0 || rt->rt_expire <= time.tv_sec)
-            && SDL(rt->rt_gateway)->sdl_family == AF_LINK
-            && SDL(rt->rt_gateway)->sdl_alen))
+    if (!rt)
     {
-        memcpy(desten, LLADDR(SDL(rt->rt_gateway), 6);
+        error = 0;
+        return 0;
+    }
+
+    la->la_hold = m;
+    if ((rt->rt_expire == 0 || rt->rt_expire > time.tv_sec)
+            && SDL(rt->rt_gateway)->sdl_family == AF_LINK
+            && SDL(rt->rt_gateway)->sdl_alen)
+    {
+        memcpy(desten, LLADDR(SDL(rt->rt_gateway)), 6);
         return 1;
     }
+    if (la->la_hold)
+    {
+        m_freem(la->la_hold);
+    }
+    la->la_hold = m;
+
     if (rt->rt_expire)
     {
         rt->rt_flags &= ~RTF_REJECT;
-    }
-
-    if (rt->rt_expire == 0 || rt->rt_expire < time.tv_sec)
-    {
-        rt->rt_expire = time.tv_sec;
-        if (la->la_asked++ < arp_maxtries)
+        if (la->la_asked == 0 || rt->rt_expire != time.tv_sec)
         {
-            arpwhohas(ac, dst->sa_data);
-        }
-        else
-        {
-            rt->rt_expire += arpt_down;
-            rt->rt_flags |= RTF_REJECT;
-            la->la_asked = 0;
+            rt->rt_expire = time.tv_sec;
+            if (la->la_asked++ < arp_maxtries)
+            {
+                arpwhohas(ac, &(SIN(dst)->sin_addr));
+            }
+            else
+            {
+                rt->rt_expire += arpt_down;
+                rt->rt_flags |= RTF_REJECT;
+                la->la_asked = 0;
+            }
         }
     }
 
@@ -313,7 +335,6 @@ arpintr()
 {
     struct mbuf *m;
     struct arphdr *ar;
-    int s;
     extern struct ifqueue arpintrq;
 
     while (arpintrq.ifq_head)
@@ -321,8 +342,8 @@ arpintr()
         IF_DEQUEUE(&arpintrq, m);
         if (!m)
             break;
-        int min_len = sizeof(*ar) + 2 * (6 + 4);
         ar = mtod(m, struct arphdr *);
+        int min_len = sizeof(*ar) + 2 * (ar->ar_hln + ar->ar_pln);
         if (ntohs(ar->ar_hrd) == ARPHRD_ETHER
             && m->m_len >= sizeof (*ar)
             && m->m_len >= min_len)
@@ -331,10 +352,12 @@ arpintr()
                 || ar->ar_pro == ETHERTYPE_IPTRAILERS)
             {
                 in_arpinput(m);
-                continue;
+            }
+            else
+            {
+                m_free(m);    // 不满足各种过滤条件，丢弃该buf
             }
         }
-        m_free(m);    // 不满足各种过滤条件，丢弃该buf
     }
 }
 
@@ -358,13 +381,13 @@ in_arpinput(m)
 {
     struct ether_arp *ea = NULL;
     struct arpcom *ac = (struct arpcom *)m->m_pkthdr.rcvif;
-    struct ether_header *eh;
-    struct rtentry *rt;
+    struct ether_header *eh = NULL;
+    struct rtentry *rt = NULL;
     struct in_ifaddr *ia, *maybe_ia = 0;
-    struct sockaddr_dl *sdl;
+    struct sockaddr_dl *sdl = NULL;
     struct sockaddr sa;
     struct in_addr isaddr, itaddr, myaddr;
-    int op;
+    int op = 0;
 
     ea = mtod(m, struct ether_arp *);
     op = ea->ea_hdr.ar_op;
@@ -400,7 +423,7 @@ in_arpinput(m)
     // 收到了本机发出的请求，忽略该分组
     // 本机接口的硬件地址????
     if (memcmp(ea->arp_sha, 
-        ((struct arpcom*)(maybe_ia->ia_ifa.ifa_ifp))->ac_enaddr,
+        ((struct arpcom*)(maybe_ia->ia_ifp))->ac_enaddr,
         sizeof (ea->arp_sha)) == 0)
         return;
 
@@ -441,6 +464,7 @@ in_arpinput(m)
                 // 记录差错信息后，程序继续执行
                 // 更新arp结点的硬件地址
                 // ?????
+                memcpy(ea->arp_sha, LLADDR(sdl), sizeof(ea->arp_sha));
             }
         }
         memcpy(LLADDR(SDL(la->la_rt->rt_gateway)),
@@ -451,13 +475,14 @@ in_arpinput(m)
         // 则被复位成arpt_keep
         if (la->la_timer)
             la->la_timer = arpt_keep;
-        la->la_rt->rt_flags &= RTF_REJECT;
+        la->la_rt->rt_flags &= ~RTF_REJECT;
         la->la_asked = 0;
 
         if (la->la_hold)
             ether_output(m->m_pkthdr.rcvif, la->la_hold, &sa, la->la_rt);
     }
 
+    // 如果arp不是请求操作，那么丢弃接收到的分组并返回
     if (ea->ea_hdr.ar_op != ARPOP_REQUEST)
     {
         goto out;
@@ -483,6 +508,7 @@ in_arpinput(m)
     memcpy(ea->arp_tpa, isaddr.s_addr, sizeof (ea->arp_tpa));
 
     ea->ea_hdr.ar_op = ARPOP_REPLY;
+    
     memcpy(sa.sa_data, eh, 14);
 
 reply:

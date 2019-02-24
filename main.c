@@ -143,7 +143,7 @@ int main(void)
 //    print_ifconf((struct ifconf *)data);
 
     struct socket so;
-    strcpy(((struct ifreq *)data)->ifr_name, "le0", strlen("le0"));
+    strcpy(((struct ifreq *)data)->ifr_name, "le0");
     //((struct ifreq *)data)->ifr_addr = (struct sockaddr *)(data + offsetof(struct ifreq, ifr_ifru));
 //    ifioctl(&so, 0, data, NULL);
 

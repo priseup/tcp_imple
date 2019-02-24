@@ -110,6 +110,42 @@ timeout(ftn, arg, ticks)
 	void *arg;
 	register int ticks;
 {
+    register struct callout *new, *p, *t;
+    register int s;
+
+    if (ticks <= 0)
+        ticks = 1;
+
+    /* Lock out the clock. */
+//    s = splhigh();
+
+    /* Fill in the next free callout structure. */
+    if (callfree == NULL)
+        printf("timeout table full");
+    new = callfree;
+    callfree = new->c_next;
+    new->c_arg = arg;
+    new->c_func = ftn;
+
+    /*
+    * The time for each event is stored as a difference from the time
+    * of the previous event on the queue.  Walk the queue, correcting
+    * the ticks argument for queue entries passed.  Correct the ticks
+    * value for the queue entry immediately after the insertion point
+    * as well.  Watch out for negative c_time values; these represent
+    * overdue events.
+    */
+    for (p = &calltodo;
+        (t = p->c_next) != NULL && ticks > t->c_time; p = t)
+        if (t->c_time > 0)
+            ticks -= t->c_time;
+    new->c_time = ticks;
+    if (t != NULL)
+        t->c_time -= ticks;
+
+    /* Insert the new entry into the queue. */
+    p->c_next = new;
+    new->c_next = t;
 }
 
 void
