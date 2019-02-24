@@ -211,7 +211,7 @@ char *
 ether_sprintf(ap)
 	register u_char *ap;
 {
-    return NULL;
+    return "call ether_sprintf()";
 }
 
 /*
